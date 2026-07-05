@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Photo Composition AI" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>Photo Composition AI</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.2.0",
+          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+          "@tensorflow/tfjs": "https://esm.sh/@tensorflow/tfjs@4.10.0",
+          "@mediapipe/tasks-vision": "https://esm.sh/@mediapipe/tasks-vision@0.10.8",
+          "openai": "https://esm.sh/openai@4.28.0"
+        }
+      }
+    </script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; height: 100vh; width: 100vw; touch-action: none; }
+      #root { height: 100%; width: 100%; }
+      .camera-ui { position: relative; width: 100%; height: 100%; background: #000; display: flex; flex-direction: column; }
+      .camera-view { flex: 1; position: relative; overflow: hidden; background: #111; }
+      #camera-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .overlay-grid { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+      .grid-line { position: absolute; background: rgba(255, 215, 0, 0.5); }
+      .guide-label { position: absolute; color: rgba(255,215,0,0.8); font-size: 12px; background: rgba(0,0,0,0.6); padding: 2px 8px; border-radius: 12px; bottom: 8px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+      .controls { position: absolute; bottom: 30px; left: 0; width: 100%; display: flex; justify-content: space-around; align-items: center; padding: 0 20px; z-index: 10; }
+      .ctrl-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.3); color: white; font-size: 24px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+      .ctrl-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.3); }
+      .shutter-btn { width: 80px; height: 80px; border-radius: 50%; background: white; border: 4px solid rgba(255,255,255,0.6); box-shadow: 0 0 30px rgba(255,255,255,0.2); }
+      .shutter-btn:active { transform: scale(0.9); }
+      .score-panel { position: absolute; top: 20px; right: 16px; background: rgba(0,0,0,0.7); backdrop-filter: blur(12px); border-radius: 16px; padding: 12px 16px; min-width: 100px; border: 1px solid rgba(255,255,255,0.1); z-index: 20; }
+      .score-item { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; color: #eee; }
+      .score-value { font-weight: 700; color: #fbbf24; }
+      .ai-suggestion { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); padding: 10px 20px; border-radius: 30px; font-size: 15px; font-weight: 500; border: 1px solid rgba(255,215,0,0.3); color: #fbbf24; white-space: nowrap; z-index: 15; max-width: 80%; overflow: hidden; text-overflow: ellipsis; }
+      .guide-selector { position: absolute; top: 20px; left: 16px; z-index: 20; display: flex; flex-direction: column; gap: 6px; max-height: 60%; overflow-y: auto; }
+      .guide-chip { background: rgba(0,0,0,0.6); backdrop-filter: blur(6px); padding: 6px 14px; border-radius: 20px; font-size: 12px; border: 1px solid rgba(255,255,255,0.15); color: #ddd; transition: 0.2s; cursor: pointer; }
+      .guide-chip.active { background: rgba(255,215,0,0.25); border-color: #fbbf24; color: #fbbf24; }
+      .mode-tabs { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); z-index: 25; display: flex; gap: 12px; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); padding: 6px 16px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.08); }
+      .mode-tab { padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; color: #aaa; transition: 0.2s; cursor: pointer; background: transparent; border: none; }
+      .mode-tab.active { background: #fbbf24; color: #000; }
+      @media (max-width: 430px) { .score-panel { padding: 8px 12px; min-width: 80px; } .score-item { font-size: 11px; } .guide-chip { font-size: 10px; padding: 4px 10px; } .ctrl-btn { width: 48px; height: 48px; font-size: 18px; } .shutter-btn { width: 64px; height: 64px; } }
+    </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module">
+    import React, { useState, useRef, useEffect, useCallback } from 'react';
+    import ReactDOM from 'react-dom/client';
+    import * as tf from '@tensorflow/tfjs';
+    import { ImageClassifier, ObjectDetector } from '@mediapipe/tasks-vision';
+
+    // ---- PWA Service Worker ----
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
+    // ---- Main App ----
+    const App = () => {
+      const [facingMode, setFacingMode] = useState('environment');
+      const [guide, setGuide] = useState('regra-dos-tercos');
+      const [mode, setMode] = useState('camera'); // camera | learn | reference
+      const [suggestion, setSuggestion] = useState('Aponte para um objeto principal');
+      const [scores, setScores] = useState({ composition: 78, lighting: 65, framing: 72, overall: 72 });
+      const videoRef = useRef(null);
+      const canvasRef = useRef(null);
+      const streamRef = useRef(null);
+      const [photo, setPhoto] = useState(null);
+      const [zoom, setZoom] = useState(1);
+
+      // ---- Camera Start ----
+      const startCamera = useCallback(async () => {
+        try {
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(t => t.stop());
+          }
+          const constraints = {
+            video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 }, zoom: zoom }
+          };
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            await videoRef.current.play();
+          }
+        } catch (err) {
+          console.error('Camera error:', err);
+          setSuggestion('Permissão da câmera necessária');
+        }
+      }, [facingMode, zoom]);
+
+      useEffect(() => {
+        startCamera();
+        return () => {
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach(t => t.stop());
+          }
+        };
+      }, [startCamera]);
+
+      // ---- Capture Photo ----
+      const capturePhoto = () => {
+        if (!videoRef.current) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoRef.current, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        setPhoto(dataUrl);
+        // Simular análise
+        const newScores = {
+          composition: 65 + Math.floor(Math.random() * 30),
+          lighting: 60 + Math.floor(Math.random() * 35),
+          framing: 70 + Math.floor(Math.random() * 25),
+          overall: 70 + Math.floor(Math.random() * 25)
+        };
+        setScores(newScores);
+        const tips = ['Composição excelente!', 'Ajuste a iluminação', 'Enquadramento perfeito', 'Tente um ângulo diferente'];
+        setSuggestion(tips[Math.floor(Math.random() * tips.length)]);
+      };
+
+      // ---- AI Simulation (placeholder for real inference) ----
+      const simulateAI = () => {
+        // Em produção, aqui rodaria TensorFlow.js / MediaPipe / OpenAI Vision
+        const actions = ['Mova para esquerda', 'Mova para direita', 'Aproxime', 'Afaste', 'Suba a câmera', 'Abaixe a câmera', 'Gire levemente', 'Alinhe ao horizonte', 'Posicione no ponto ideal'];
+        setSuggestion(actions[Math.floor(Math.random() * actions.length)]);
+      };
+
+      useEffect(() => {
+        const interval = setInterval(simulateAI, 4000);
+        return () => clearInterval(interval);
+      }, []);
+
+      // ---- Guide Overlay ----
+      const renderGuide = () => {
+        const commonStyle = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' };
+        switch (guide) {
+          case 'regra-dos-terços':
+            return (
+              <div style={commonStyle}>
+                <div className="grid-line" style={{ left: '33.33%', top: 0, width: 1, height: '100%' }} />
+                <div className="grid-line" style={{ left: '66.66%', top: 0, width: 1, height: '100%' }} />
+                <div className="grid-line" style={{ top: '33.33%', left: 0, width: '100%', height: 1 }} />
+                <div className="grid-line" style={{ top: '66.66%', left: 0, width: '100%', height: 1 }} />
+                <div className="guide-label">Regra dos Terços</div>
+              </div>
+            );
+          case 'triangulo':
+            return (
+              <div style={commonStyle}>
+                <svg width="100%" height="100%" viewBox="0 0 100 100" style={{ position: 'absolute', top: 0, left: 0 }}>
+                  <polygon points="50,10 10,90 90,90" fill="none" stroke="rgba(255,215,0,0.6)" strokeWidth="1.5" />
+                </svg>
+                <div className="guide-label">Triângulo</div>
+              </div>
+            );
+          case 'espiral-fibonacci':
+            return (
+              <div style={commonStyle}>
+                <svg width="100%" height="100%" viewBox="0 0 100 100" style={{ position: 'absolute', top: 0, left: 0 }}>
+                  <path d="M50,50 Q60,40 70,50 Q80,60 70,70 Q60,80 50,70 Q40,60 50,50" fill="none" stroke="rgba(255,215,0,0.6)" strokeWidth="1.5" />
+                </svg>
+                <div className="guide-label">Espiral de Fibonacci</div>
+              </div>
+            );
+          case 'simetria':
+            return (
+              <div style={commonStyle}>
+                <div className="grid-line" style={{ left: '50%', top: 0, width: 1, height: '100%' }} />
+                <div className="guide-label">Simetria</div>
+              </div>
+            );
+          case 'diagonais':
+            return (
+              <div style={commonStyle}>
+                <div className="grid-line" style={{ top: 0, left: 0, width: '100%', height: 1, transform: 'rotate(45deg)', transformOrigin: '0 0' }} />
+                <div className="grid-line" style={{ bottom: 0, right: 0, width: '100%', height: 1, transform: 'rotate(-45deg)', transformOrigin: '100% 100%' }} />
+                <div className="guide-label">Diagonais</div>
+              </div>
+            );
+          default:
+            return <div className="guide-label">{guide.replace(/-/g,' ')}</div>;
+        }
+      };
+
+      // ---- UI ----
+      return (
+        <div className="camera-ui">
+          <div className="camera-view">
+            <video ref={videoRef} id="camera-preview" autoPlay playsInline muted style={{ transform: `scale(${zoom})` }} />
+            <div className="overlay-grid">{renderGuide()}</div>
+
+            {/* Scores */}
+            <div className="score-panel">
+              <div className="score-item"><span>Composição</span><span className="score-value">{scores.composition}%</span></div>
+              <div className="score-item"><span>Iluminação</span><span className="score-value">{scores.lighting}%</span></div>
+              <div className="score-item"><span>Enquadramento</span><span className="score-value">{scores.framing}%</span></div>
+              <div className="score-item" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 4, marginTop: 2 }}><span>Geral</span><span className="score-value" style={{ color: '#fbbf24' }}>{scores.overall}</span></div>
+            </div>
+
+            {/* AI Suggestion */}
+            <div className="ai-suggestion">{suggestion}</div>
+
+            {/* Guide Selector */}
+            <div className="guide-selector">
+              {['regra-dos-tercos','triangulo','espiral-fibonacci','simetria','diagonais','proporcao-aurea','ponto-de-fuga','grade-3x3','grade-4x4'].map(g => (
+                <div key={g} className={`guide-chip ${guide === g ? 'active' : ''}`} onClick={() => setGuide(g)}>
+                  {g.replace(/-/g,' ')}
+                </div>
+              ))}
+            </div>
+
+            {/* Mode Tabs */}
+            <div className="mode-tabs">
+              <button className={`mode-tab ${mode === 'camera' ? 'active' : ''}`} onClick={() => setMode('camera')}>Câmera</button>
+              <button className={`mode-tab ${mode === 'learn' ? 'active' : ''}`} onClick={() => setMode('learn')}>Aprender</button>
+              <button className={`mode-tab ${mode === 'reference' ? 'active' : ''}`} onClick={() => setMode('reference')}>Referência</button>
+            </div>
+
+            {/* Controls */}
+            <div className="controls">
+              <button className="ctrl-btn" onClick={() => setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 8v-2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/></svg>
+              </button>
+              <button className="shutter-btn" onClick={capturePhoto} />
+              <button className="ctrl-btn" onClick={() => setZoom(prev => Math.min(prev + 0.1, 2))}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>
+              </button>
+            </div>
+          </div>
+          {photo && (
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <img src={photo} alt="captured" style={{ maxWidth: '90%', maxHeight: '70%', borderRadius: 12, objectFit: 'contain' }} />
+              <div style={{ marginTop: 20, display: 'flex', gap: 20 }}>
+                <button style={{ background: '#fbbf24', border: 'none', padding: '12px 30px', borderRadius: 30, fontWeight: 600 }} onClick={() => setPhoto(null)}>Fechar</button>
+                <button style={{ background: '#333', border: 'none', padding: '12px 30px', borderRadius: 30, color: 'white' }} onClick={() => { const a = document.createElement('a'); a.href = photo; a.download = 'photo.jpg'; a.click(); }}>Salvar</button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
