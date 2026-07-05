@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Photo AI" />
     <link rel="manifest" href="/manifest.json" />
-    <title>Photo Composition AI</title>
+    <title>Photo Composition AI - Profissional</title>
     <style>
         * {
             margin: 0;
@@ -58,6 +58,19 @@
             display: block;
             touch-action: none;
         }
+        #canvas-output {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 3;
+            display: none;
+        }
+        #canvas-output.active {
+            display: block;
+        }
         .overlay-grid {
             position: absolute;
             top: 0;
@@ -66,11 +79,6 @@
             height: 100%;
             pointer-events: none;
             z-index: 5;
-        }
-        .overlay-grid svg {
-            width: 100%;
-            height: 100%;
-            display: block;
         }
         .grid-line {
             position: absolute;
@@ -124,23 +132,59 @@
             100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
         }
         
-        .exposure-indicator {
+        .aperture-control {
             position: absolute;
             bottom: 200px;
-            right: 20px;
-            background: rgba(0,0,0,0.7);
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-size: 10px;
-            color: #fbbf24;
+            right: 16px;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            padding: 12px 14px;
+            border: 1px solid rgba(255,215,0,0.15);
             z-index: 12;
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(255,215,0,0.2);
+            min-width: 100px;
             display: none;
-            font-weight: 600;
         }
-        .exposure-indicator.active {
+        .aperture-control.active {
             display: block;
+        }
+        .aperture-control .label {
+            font-size: 9px;
+            color: #aaa;
+            text-align: center;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+        .aperture-control .value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fbbf24;
+            text-align: center;
+        }
+        .aperture-control .sub {
+            font-size: 10px;
+            color: #888;
+            text-align: center;
+        }
+        .aperture-slider {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255,215,0,0.2);
+            border-radius: 2px;
+            outline: none;
+            margin-top: 8px;
+        }
+        .aperture-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fbbf24;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.2);
         }
         
         .zoom-slider {
@@ -188,17 +232,18 @@
         .mode-filters {
             display: flex;
             justify-content: center;
-            gap: 12px;
+            gap: 10px;
             margin-bottom: 10px;
-            padding: 0 16px;
+            padding: 0 12px;
+            flex-wrap: wrap;
         }
         .mode-filter-btn {
             background: rgba(255,255,255,0.08);
             border: 2px solid rgba(255,255,255,0.12);
             color: #aaa;
-            padding: 4px 14px;
+            padding: 4px 12px;
             border-radius: 16px;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 600;
             transition: 0.2s;
             touch-action: manipulation;
@@ -214,6 +259,19 @@
         }
         .mode-filter-btn:active {
             transform: scale(0.92);
+        }
+        .mode-filter-btn .badge {
+            display: inline-block;
+            background: rgba(255,215,0,0.2);
+            padding: 0 4px;
+            border-radius: 4px;
+            font-size: 7px;
+            margin-left: 2px;
+            color: #fbbf24;
+        }
+        .mode-filter-btn.active .badge {
+            background: rgba(0,0,0,0.2);
+            color: #000;
         }
         
         .composition-scroll {
@@ -270,19 +328,19 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 18px;
+            gap: 16px;
             padding: 0 16px;
             margin-top: 4px;
         }
         .action-btn {
-            width: 42px;
-            height: 42px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(8px);
             border: 2px solid rgba(255, 255, 255, 0.12);
             color: white;
-            font-size: 16px;
+            font-size: 15px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -300,8 +358,8 @@
             color: #fbbf24;
         }
         .shutter-btn {
-            width: 62px;
-            height: 62px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             background: white;
             border: 4px solid rgba(255,255,255,0.35);
@@ -528,78 +586,38 @@
             transform: scale(0.92);
         }
         
-        .portrait-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 4;
-            opacity: 0;
-            transition: opacity 0.5s;
-        }
-        .portrait-overlay.active {
-            opacity: 1;
-        }
-        .portrait-overlay .blur-bg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.3) 100%);
-        }
-        .portrait-overlay .subject-ring {
+        .loading-indicator {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 50%;
-            height: 60%;
+            z-index: 8;
+            color: #fbbf24;
+            font-size: 12px;
+            text-align: center;
+            background: rgba(0,0,0,0.7);
+            padding: 12px 20px;
+            border-radius: 12px;
             border: 1px solid rgba(255,215,0,0.15);
-            border-radius: 20px;
+            display: none;
         }
-        
-        .cinema-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 4;
-            opacity: 0;
-            transition: opacity 0.5s;
+        .loading-indicator.active {
+            display: block;
         }
-        .cinema-overlay.active {
-            opacity: 1;
-        }
-        .cinema-overlay .top-bar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 15%;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
-        }
-        .cinema-overlay .bottom-bar {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 15%;
-            background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
-        }
-        .cinema-overlay .center-ring {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 60%;
-            height: 60%;
-            border: 1px solid rgba(255,215,0,0.08);
+        .loading-indicator .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,215,0,0.2);
+            border-top: 2px solid #fbbf24;
             border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
         @media (max-width: 430px) {
@@ -614,11 +632,11 @@
                 padding: 0px 0;
             }
             .mode-filter-btn {
-                font-size: 9px;
-                padding: 3px 10px;
+                font-size: 8px;
+                padding: 3px 8px;
             }
             .mode-filters {
-                gap: 8px;
+                gap: 6px;
             }
             .comp-chip {
                 font-size: 7px;
@@ -670,19 +688,24 @@
                 height: 100px;
                 right: 10px;
             }
-            .exposure-indicator {
-                font-size: 8px;
+            .aperture-control {
                 bottom: 180px;
-                right: 12px;
-                padding: 2px 8px;
+                right: 10px;
+                padding: 8px 10px;
+                min-width: 70px;
+            }
+            .aperture-control .value {
+                font-size: 16px;
             }
         }
     </style>
 </head>
 <body>
     <div id="root"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.2.0/dist/body-pix.min.js"></script>
     <script>
-        // 15 COMPOSIÇÕES COM POSIÇÕES
+        // 15 COMPOSIÇÕES
         const COMPOSITIONS = [
             { id: 'rule-of-thirds', label: 'RULE OF THIRDS', positions: ['padrão', 'invertido', 'vertical', 'horizontal'] },
             { id: 'symmetry', label: 'SYMMETRY', positions: ['vertical', 'horizontal', 'central'] },
@@ -701,6 +724,19 @@
             { id: 'harmonic-armature', label: 'HARMONIC ARMATURE', positions: ['padrão', 'refletido'] }
         ];
 
+        // Valores de abertura (f-stop)
+        const APERTURE_VALUES = [
+            { label: 'f/1.4', value: 1.4, blur: 1.0 },
+            { label: 'f/2.0', value: 2.0, blur: 0.9 },
+            { label: 'f/2.8', value: 2.8, blur: 0.75 },
+            { label: 'f/4.0', value: 4.0, blur: 0.55 },
+            { label: 'f/5.6', value: 5.6, blur: 0.4 },
+            { label: 'f/8.0', value: 8.0, blur: 0.25 },
+            { label: 'f/11', value: 11, blur: 0.15 },
+            { label: 'f/16', value: 16, blur: 0.08 },
+            { label: 'f/22', value: 22, blur: 0.03 }
+        ];
+
         (function() {
             const root = document.getElementById('root');
             let currentComposition = COMPOSITIONS[0];
@@ -709,9 +745,10 @@
             let stream = null;
             let isCameraReady = false;
             let videoElement = null;
+            let canvasOutput = null;
+            let ctxOutput = null;
             let zoomLevel = 1;
-            let minZoom = 1;
-            let maxZoom = 5;
+            let currentZoom = 1;
             let isRecording = false;
             let mediaRecorder = null;
             let recordedChunks = [];
@@ -720,18 +757,22 @@
             let availableCameras = [];
             let currentCameraIndex = 0;
             let currentMode = 'camera';
-            let exposureValue = 0;
-            let focusPoint = { x: 0.5, y: 0.5 };
-            let isZoomActive = false;
-            let currentZoom = 1;
-            let cameraStarted = false;
+            let currentApertureIndex = 2; // f/2.8 padrão
+            let isApertureActive = false;
+            let isSegmenting = false;
+            let segmentationReady = false;
+            let bodyPixModel = null;
+            let lastSegmentation = null;
+            let animationFrame = null;
+            let isProcessing = false;
 
             // Elementos
             let focusIndicator = null;
-            let exposureIndicator = null;
+            let apertureControl = null;
+            let apertureSlider = null;
+            let apertureValueDisplay = null;
             let zoomSlider = null;
-            let portraitOverlay = null;
-            let cinemaOverlay = null;
+            let loadingIndicator = null;
 
             // Funções de posição
             const getCurrentPosition = () => {
@@ -925,31 +966,209 @@
                 grid.appendChild(container);
             };
 
+            // Carregar modelo BodyPix
+            const loadBodyPix = async () => {
+                try {
+                    loadingIndicator.classList.add('active');
+                    loadingIndicator.querySelector('.text').textContent = '🔄 Carregando IA de segmentação...';
+                    
+                    bodyPixModel = await bodyPix.load({
+                        architecture: 'MobileNetV1',
+                        outputStride: 16,
+                        multiplier: 0.75,
+                        quantBytes: 2
+                    });
+                    
+                    segmentationReady = true;
+                    loadingIndicator.classList.remove('active');
+                    document.getElementById('suggestion').textContent = '🧠 IA carregada! Modo Retrato/Cinema disponível';
+                    console.log('✅ BodyPix carregado com sucesso!');
+                } catch (error) {
+                    console.error('❌ Erro ao carregar BodyPix:', error);
+                    loadingIndicator.classList.remove('active');
+                    loadingIndicator.querySelector('.text').textContent = '⚠️ Falha ao carregar IA';
+                    document.getElementById('suggestion').textContent = '⚠️ IA não disponível - use modo Foto ou Vídeo';
+                }
+            };
+
+            // Processar segmentação e aplicar desfoque
+            const processSegmentation = async () => {
+                if (!videoElement || !canvasOutput || !bodyPixModel || !segmentationReady || isProcessing) {
+                    return;
+                }
+
+                try {
+                    isProcessing = true;
+                    
+                    // Fazer segmentação
+                    const segmentation = await bodyPixModel.segmentPerson(videoElement, {
+                        flipHorizontal: facingMode === 'user',
+                        internalResolution: 'medium',
+                        segmentationThreshold: 0.6
+                    });
+
+                    if (!segmentation || !segmentation.data) {
+                        isProcessing = false;
+                        return;
+                    }
+
+                    lastSegmentation = segmentation;
+                    
+                    // Desenhar no canvas com efeito de profundidade
+                    const width = videoElement.videoWidth || 640;
+                    const height = videoElement.videoHeight || 480;
+                    
+                    canvasOutput.width = width;
+                    canvasOutput.height = height;
+                    
+                    // Desenhar o vídeo original
+                    ctxOutput.drawImage(videoElement, 0, 0, width, height);
+                    
+                    // Obter dados da imagem
+                    const imageData = ctxOutput.getImageData(0, 0, width, height);
+                    const data = imageData.data;
+                    
+                    // Dados da segmentação
+                    const segData = segmentation.data;
+                    const segWidth = segmentation.width;
+                    const segHeight = segmentation.height;
+                    
+                    // Parâmetros de desfoque baseados na abertura
+                    const aperture = APERTURE_VALUES[currentApertureIndex];
+                    const blurIntensity = aperture.blur;
+                    
+                    // Criar máscara de profundidade (simulada com base na segmentação)
+                    // Pessoas ficam nítidas, fundo desfocado
+                    const mask = new Float32Array(width * height);
+                    
+                    // Mapear segmentação para a imagem
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const segX = Math.floor((x / width) * segWidth);
+                            const segY = Math.floor((y / height) * segHeight);
+                            const segIdx = segY * segWidth + segX;
+                            
+                            // 1 = pessoa, 0 = fundo
+                            const isPerson = segData[segIdx] > 0.5;
+                            mask[y * width + x] = isPerson ? 1 : 0;
+                        }
+                    }
+                    
+                    // Aplicar desfoque apenas no fundo (áreas com máscara 0)
+                    const blurRadius = Math.max(1, Math.floor(blurIntensity * 15));
+                    
+                    if (blurRadius > 1) {
+                        // Desfoque simples (box blur) para o fundo
+                        const blurredData = new Uint8ClampedArray(data);
+                        const tempData = new Uint8ClampedArray(data);
+                        
+                        // Para cada pixel, se for fundo, aplicar blur
+                        for (let y = 0; y < height; y++) {
+                            for (let x = 0; x < width; x++) {
+                                const idx = (y * width + x) * 4;
+                                const isPerson = mask[y * width + x] > 0.5;
+                                
+                                if (!isPerson) {
+                                    // Aplicar blur no fundo
+                                    let r = 0, g = 0, b = 0, count = 0;
+                                    const half = Math.floor(blurRadius / 2);
+                                    
+                                    for (let dy = -half; dy <= half; dy++) {
+                                        for (let dx = -half; dx <= half; dx++) {
+                                            const px = Math.min(width - 1, Math.max(0, x + dx));
+                                            const py = Math.min(height - 1, Math.max(0, y + dy));
+                                            const pIdx = (py * width + px) * 4;
+                                            r += tempData[pIdx];
+                                            g += tempData[pIdx + 1];
+                                            b += tempData[pIdx + 2];
+                                            count++;
+                                        }
+                                    }
+                                    
+                                    if (count > 0) {
+                                        data[idx] = r / count;
+                                        data[idx + 1] = g / count;
+                                        data[idx + 2] = b / count;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Aplicar vinheta (efeito de lente)
+                    const centerX = width / 2;
+                    const centerY = height / 2;
+                    const maxDist = Math.min(width, height) / 2;
+                    
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const idx = (y * width + x) * 4;
+                            const dist = Math.hypot(x - centerX, y - centerY);
+                            const vignette = 1 - Math.pow(dist / maxDist, 2.5) * 0.3;
+                            data[idx] *= vignette;
+                            data[idx + 1] *= vignette;
+                            data[idx + 2] *= vignette;
+                        }
+                    }
+                    
+                    ctxOutput.putImageData(imageData, 0, 0);
+                    
+                    // Mostrar informações de abertura
+                    const aperDisplay = document.querySelector('.aperture-control .value');
+                    if (aperDisplay) {
+                        aperDisplay.textContent = aperture.label;
+                    }
+                    
+                    isProcessing = false;
+                } catch (error) {
+                    console.error('Erro no processamento:', error);
+                    isProcessing = false;
+                }
+            };
+
+            // Loop de processamento
+            const startProcessingLoop = () => {
+                if (animationFrame) {
+                    cancelAnimationFrame(animationFrame);
+                }
+                
+                const processLoop = async () => {
+                    if (currentMode === 'portrait' || currentMode === 'cinema') {
+                        await processSegmentation();
+                    }
+                    animationFrame = requestAnimationFrame(processLoop);
+                };
+                
+                processLoop();
+            };
+
             // Criar app
             const createApp = () => {
                 root.innerHTML = `
                     <div class="camera-container" id="app">
                         <div class="video-wrapper" id="videoWrapper">
                             <video id="video" autoplay playsinline muted></video>
+                            <canvas id="canvas-output"></canvas>
                             <div class="overlay-grid" id="overlayGrid"></div>
                             <div class="guide-label" id="guideLabel">${currentComposition.label}</div>
                             
                             <div class="focus-indicator" id="focusIndicator"></div>
-                            <div class="exposure-indicator" id="exposureIndicator">☀️ EV 0.0</div>
+                            
+                            <div class="aperture-control" id="apertureControl">
+                                <div class="label">📸 Abertura</div>
+                                <div class="value" id="apertureValue">f/2.8</div>
+                                <div class="sub">Profundidade de campo</div>
+                                <input type="range" class="aperture-slider" id="apertureSlider" 
+                                       min="0" max="${APERTURE_VALUES.length - 1}" value="2" step="1" />
+                            </div>
                             
                             <div class="zoom-slider" id="zoomSlider">
                                 <div class="thumb" id="zoomThumb" style="top:50%;"></div>
                             </div>
                             
-                            <div class="portrait-overlay" id="portraitOverlay">
-                                <div class="blur-bg"></div>
-                                <div class="subject-ring"></div>
-                            </div>
-                            
-                            <div class="cinema-overlay" id="cinemaOverlay">
-                                <div class="top-bar"></div>
-                                <div class="bottom-bar"></div>
-                                <div class="center-ring"></div>
+                            <div class="loading-indicator" id="loadingIndicator">
+                                <span class="spinner"></span>
+                                <span class="text">Carregando IA...</span>
                             </div>
                             
                             <div class="camera-selector" id="cameraSelector"></div>
@@ -971,8 +1190,8 @@
                                 <div class="mode-filters">
                                     <button class="mode-filter-btn active" data-mode="camera">📷 Foto</button>
                                     <button class="mode-filter-btn" data-mode="video">🎥 Vídeo</button>
-                                    <button class="mode-filter-btn" data-mode="portrait">👤 Retrato</button>
-                                    <button class="mode-filter-btn" data-mode="cinema">🎬 Cinema</button>
+                                    <button class="mode-filter-btn" data-mode="portrait">👤 Retrato <span class="badge">IA</span></button>
+                                    <button class="mode-filter-btn" data-mode="cinema">🎬 Cinema <span class="badge">IA</span></button>
                                 </div>
                                 
                                 <div class="composition-scroll" id="compositionScroll">
@@ -995,7 +1214,7 @@
                                     <button class="shutter-btn" id="shutterBtn">
                                         <div class="record-dot"></div>
                                     </button>
-                                    <button class="action-btn" id="exposureBtn">☀️</button>
+                                    <button class="action-btn" id="apertureBtn">⭕</button>
                                 </div>
                             </div>
                         </div>
@@ -1003,13 +1222,16 @@
                 `;
 
                 videoElement = document.getElementById('video');
+                canvasOutput = document.getElementById('canvas-output');
+                ctxOutput = canvasOutput.getContext('2d');
                 focusIndicator = document.getElementById('focusIndicator');
-                exposureIndicator = document.getElementById('exposureIndicator');
+                apertureControl = document.getElementById('apertureControl');
+                apertureSlider = document.getElementById('apertureSlider');
+                apertureValueDisplay = document.getElementById('apertureValue');
                 zoomSlider = document.getElementById('zoomSlider');
-                portraitOverlay = document.getElementById('portraitOverlay');
-                cinemaOverlay = document.getElementById('cinemaOverlay');
+                loadingIndicator = document.getElementById('loadingIndicator');
 
-                // Inicializar eventos
+                // Eventos
                 setupEvents();
                 
                 // Detectar câmeras e iniciar
@@ -1017,8 +1239,16 @@
                     startCamera();
                 });
                 
+                // Carregar BodyPix em background
+                setTimeout(() => {
+                    loadBodyPix();
+                }, 1000);
+                
                 renderGuideOverlay(currentComposition, getCurrentPosition());
                 updateLabel();
+                
+                // Iniciar loop de processamento
+                startProcessingLoop();
             };
 
             // Configurar eventos
@@ -1029,19 +1259,14 @@
                 wrapper.addEventListener('click', function(e) {
                     if (e.target.closest('.action-btn') || e.target.closest('.shutter-btn') || 
                         e.target.closest('.mode-filter-btn') || e.target.closest('.comp-chip') ||
-                        e.target.closest('.cam-btn') || e.target.closest('.zoom-slider')) {
+                        e.target.closest('.cam-btn') || e.target.closest('.zoom-slider') ||
+                        e.target.closest('.aperture-control')) {
                         return;
                     }
                     const rect = this.getBoundingClientRect();
                     const x = (e.clientX - rect.left) / rect.width;
                     const y = (e.clientY - rect.top) / rect.height;
                     setFocus(x, y);
-                });
-
-                // Duplo toque para exposição
-                wrapper.addEventListener('dblclick', function(e) {
-                    if (e.target.closest('.action-btn') || e.target.closest('.shutter-btn')) return;
-                    adjustExposure(0.3);
                 });
 
                 // Touch para zoom (pinça)
@@ -1062,7 +1287,7 @@
                         const t2 = e.touches[1];
                         const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
                         const delta = (dist - lastTouchDist) / 200;
-                        const newZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom + delta));
+                        const newZoom = Math.max(1, Math.min(5, currentZoom + delta));
                         setZoom(newZoom);
                         lastTouchDist = dist;
                     }
@@ -1092,9 +1317,26 @@
                 // Botão shutter
                 document.getElementById('shutterBtn').addEventListener('click', handleShutter);
                 
-                // Botão exposição
-                document.getElementById('exposureBtn').addEventListener('click', () => {
-                    adjustExposure(0.3);
+                // Botão abertura
+                document.getElementById('apertureBtn').addEventListener('click', () => {
+                    isApertureActive = !isApertureActive;
+                    apertureControl.classList.toggle('active', isApertureActive);
+                    if (isApertureActive) {
+                        document.getElementById('suggestion').textContent = '⭕ Ajuste a abertura com o slider';
+                    }
+                });
+
+                // Slider de abertura
+                apertureSlider.addEventListener('input', function() {
+                    currentApertureIndex = parseInt(this.value);
+                    const aperture = APERTURE_VALUES[currentApertureIndex];
+                    apertureValueDisplay.textContent = aperture.label;
+                    document.getElementById('suggestion').textContent = `⭕ Abertura ${aperture.label} - ${Math.round(aperture.blur * 100)}% desfoque`;
+                    
+                    // Se estiver no modo retrato ou cinema, forçar reprocessamento
+                    if (currentMode === 'portrait' || currentMode === 'cinema') {
+                        isProcessing = false;
+                    }
                 });
 
                 // Modos
@@ -1104,20 +1346,34 @@
                         this.classList.add('active');
                         currentMode = this.dataset.mode;
                         
-                        portraitOverlay.classList.toggle('active', currentMode === 'portrait');
-                        cinemaOverlay.classList.toggle('active', currentMode === 'cinema');
+                        // Mostrar/ocultar canvas de processamento
+                        const isIA = currentMode === 'portrait' || currentMode === 'cinema';
+                        canvasOutput.classList.toggle('active', isIA);
+                        apertureControl.classList.toggle('active', isIA);
+                        
+                        if (isIA && !segmentationReady) {
+                            document.getElementById('suggestion').textContent = '⏳ Carregando IA de segmentação...';
+                            loadBodyPix();
+                        }
                         
                         const shutter = document.getElementById('shutterBtn');
                         if (currentMode === 'video' || currentMode === 'cinema') {
                             shutter.classList.add('recording');
-                            document.getElementById('suggestion').textContent = currentMode === 'cinema' ? '🎬 Modo Cinema - Toque para gravar' : '🎥 Toque no botão vermelho para gravar';
+                            document.getElementById('suggestion').textContent = currentMode === 'cinema' ? 
+                                '🎬 Modo Cinema - Toque para gravar com desfoque IA' : 
+                                '🎥 Toque no botão vermelho para gravar';
                         } else {
                             shutter.classList.remove('recording');
                             if (currentMode === 'portrait') {
-                                document.getElementById('suggestion').textContent = '👤 Modo Retrato - Efeito de profundidade';
+                                document.getElementById('suggestion').textContent = '👤 Modo Retrato - Desfoque inteligente com IA';
                             } else {
                                 document.getElementById('suggestion').textContent = '📸 Toque no botão para capturar';
                             }
+                        }
+                        
+                        // Forçar reprocessamento
+                        if (isIA) {
+                            isProcessing = false;
                         }
                     });
                 });
@@ -1145,7 +1401,7 @@
                     if (target.closest('.comp-chip') || target.closest('.action-btn') || 
                         target.closest('.mode-filter-btn') || target.closest('.cam-btn') ||
                         target.closest('.shutter-btn') || target.closest('.zoom-slider') ||
-                        target.closest('.photo-preview')) {
+                        target.closest('.aperture-control') || target.closest('.photo-preview')) {
                         return;
                     }
                     if (currentMode !== 'video' && currentMode !== 'cinema') {
@@ -1161,7 +1417,7 @@
                     const touch = e.touches[0];
                     const rect = this.getBoundingClientRect();
                     const y = (touch.clientY - rect.top) / rect.height;
-                    const zoomVal = minZoom + (1 - y) * (maxZoom - minZoom);
+                    const zoomVal = 1 + (1 - y) * 4;
                     setZoom(zoomVal);
                 }, { passive: false });
 
@@ -1170,13 +1426,12 @@
                     const touch = e.touches[0];
                     const rect = this.getBoundingClientRect();
                     const y = (touch.clientY - rect.top) / rect.height;
-                    const zoomVal = minZoom + (1 - Math.max(0, Math.min(1, y))) * (maxZoom - minZoom);
+                    const zoomVal = 1 + (1 - Math.max(0, Math.min(1, y))) * 4;
                     setZoom(zoomVal);
                 }, { passive: false });
             };
 
             const setFocus = (x, y) => {
-                focusPoint = { x, y };
                 focusIndicator.style.left = (x * 100) + '%';
                 focusIndicator.style.top = (y * 100) + '%';
                 focusIndicator.classList.remove('active');
@@ -1186,20 +1441,12 @@
                 document.getElementById('suggestion').textContent = `🎯 Foco em ${Math.round(x*100)}%, ${Math.round(y*100)}%`;
             };
 
-            const adjustExposure = (delta) => {
-                exposureValue = Math.max(-2, Math.min(2, exposureValue + delta));
-                exposureIndicator.textContent = `☀️ EV ${exposureValue.toFixed(1)}`;
-                exposureIndicator.classList.add('active');
-                document.getElementById('suggestion').textContent = `☀️ Exposição ${exposureValue > 0 ? '+' : ''}${exposureValue.toFixed(1)} EV`;
-                setTimeout(() => exposureIndicator.classList.remove('active'), 2000);
-            };
-
             const setZoom = (value) => {
-                currentZoom = Math.max(minZoom, Math.min(maxZoom, value));
+                currentZoom = Math.max(1, Math.min(5, value));
                 if (videoElement) {
                     videoElement.style.transform = `scale(${currentZoom})`;
                 }
-                const pct = ((currentZoom - minZoom) / (maxZoom - minZoom)) * 100;
+                const pct = ((currentZoom - 1) / 4) * 100;
                 const thumb = document.getElementById('zoomThumb');
                 if (thumb) thumb.style.top = (100 - pct) + '%';
                 document.getElementById('suggestion').textContent = `🔍 Zoom ${currentZoom.toFixed(1)}x`;
@@ -1253,7 +1500,6 @@
             // Iniciar câmera
             const startCamera = async (deviceId = null) => {
                 try {
-                    // Verificar permissões primeiro
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                         throw new Error('Navegador não suporta câmera');
                     }
@@ -1268,21 +1514,17 @@
                         audio: false
                     };
 
-                    // Se não houver deviceId, tentar com facingMode
                     if (!deviceId) {
                         delete constraints.video.deviceId;
                     }
 
-                    console.log('Tentando iniciar câmera com:', constraints);
                     stream = await navigator.mediaDevices.getUserMedia(constraints);
                     
                     if (videoElement) {
                         videoElement.srcObject = stream;
                         await videoElement.play();
                         isCameraReady = true;
-                        cameraStarted = true;
                         document.getElementById('suggestion').textContent = '📸 Câmera pronta! Toque na tela para focar';
-                        console.log('✅ Câmera iniciada com sucesso!');
                     }
                 } catch (error) {
                     console.error('❌ Erro ao iniciar câmera:', error);
@@ -1337,7 +1579,7 @@
                 }
             };
 
-            // Capturar foto
+            // Capturar foto com ou sem efeito retrato
             const capturePhoto = (portrait = false) => {
                 if (!videoElement || !isCameraReady) {
                     document.getElementById('suggestion').textContent = '⏳ Aguarde a câmera iniciar';
@@ -1350,36 +1592,103 @@
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(videoElement, 0, 0, width, height);
                 
-                let dataUrl = canvas.toDataURL('image/jpeg', 1.0);
-                
-                if (portrait) {
-                    // Efeito bokeh simulado
+                if (portrait && segmentationReady && lastSegmentation) {
+                    // Usar a segmentação para aplicar desfoque
+                    ctx.drawImage(videoElement, 0, 0, width, height);
+                    const imageData = ctx.getImageData(0, 0, width, height);
+                    const data = imageData.data;
+                    
+                    const segData = lastSegmentation.data;
+                    const segWidth = lastSegmentation.width;
+                    const segHeight = lastSegmentation.height;
+                    
+                    const aperture = APERTURE_VALUES[currentApertureIndex];
+                    const blurRadius = Math.max(1, Math.floor(aperture.blur * 15));
+                    
+                    // Aplicar desfoque no fundo
+                    const tempData = new Uint8ClampedArray(data);
+                    
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const segX = Math.floor((x / width) * segWidth);
+                            const segY = Math.floor((y / height) * segHeight);
+                            const segIdx = segY * segWidth + segX;
+                            const isPerson = segData[segIdx] > 0.5;
+                            
+                            if (!isPerson && blurRadius > 1) {
+                                const idx = (y * width + x) * 4;
+                                let r = 0, g = 0, b = 0, count = 0;
+                                const half = Math.floor(blurRadius / 2);
+                                
+                                for (let dy = -half; dy <= half; dy++) {
+                                    for (let dx = -half; dx <= half; dx++) {
+                                        const px = Math.min(width - 1, Math.max(0, x + dx));
+                                        const py = Math.min(height - 1, Math.max(0, y + dy));
+                                        const pIdx = (py * width + px) * 4;
+                                        r += tempData[pIdx];
+                                        g += tempData[pIdx + 1];
+                                        b += tempData[pIdx + 2];
+                                        count++;
+                                    }
+                                }
+                                
+                                if (count > 0) {
+                                    data[idx] = r / count;
+                                    data[idx + 1] = g / count;
+                                    data[idx + 2] = b / count;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Vinheta
+                    const centerX = width / 2;
+                    const centerY = height / 2;
+                    const maxDist = Math.min(width, height) / 2;
+                    
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const idx = (y * width + x) * 4;
+                            const dist = Math.hypot(x - centerX, y - centerY);
+                            const vignette = 1 - Math.pow(dist / maxDist, 2.5) * 0.25;
+                            data[idx] *= vignette;
+                            data[idx + 1] *= vignette;
+                            data[idx + 2] *= vignette;
+                        }
+                    }
+                    
+                    ctx.putImageData(imageData, 0, 0);
+                    document.getElementById('suggestion').textContent = `👤 Retrato ${APERTURE_VALUES[currentApertureIndex].label}`;
+                } else if (portrait) {
+                    // Fallback: desfoque radial simples
+                    ctx.drawImage(videoElement, 0, 0, width, height);
                     const imageData = ctx.getImageData(0, 0, width, height);
                     const data = imageData.data;
                     const centerX = width / 2;
                     const centerY = height / 2;
                     const radius = Math.min(width, height) * 0.35;
+                    
                     for (let y = 0; y < height; y++) {
                         for (let x = 0; x < width; x++) {
                             const dist = Math.hypot(x - centerX, y - centerY);
                             if (dist > radius) {
                                 const idx = (y * width + x) * 4;
-                                const blur = Math.min(0.7, (dist - radius) / radius * 0.6);
+                                const blur = Math.min(0.6, (dist - radius) / radius * 0.5);
                                 data[idx] = data[idx] * (1 - blur);
-                                data[idx+1] = data[idx+1] * (1 - blur);
-                                data[idx+2] = data[idx+2] * (1 - blur);
+                                data[idx + 1] = data[idx + 1] * (1 - blur);
+                                data[idx + 2] = data[idx + 2] * (1 - blur);
                             }
                         }
                     }
                     ctx.putImageData(imageData, 0, 0);
-                    dataUrl = canvas.toDataURL('image/jpeg', 1.0);
-                    document.getElementById('suggestion').textContent = '👤 Modo Retrato aplicado!';
+                    document.getElementById('suggestion').textContent = '👤 Retrato (modo simples)';
                 } else {
+                    ctx.drawImage(videoElement, 0, 0, width, height);
                     document.getElementById('suggestion').textContent = `📸 ${currentComposition.label} aplicada!`;
                 }
                 
+                const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
                 showPreview(dataUrl, portrait ? 'portrait' : 'photo');
                 
                 // Atualizar scores
@@ -1398,7 +1707,7 @@
                 preview.innerHTML = `
                     <img src="${url}" alt="Foto" />
                     <div style="color:#aaa;font-size:11px;margin-top:8px;">
-                        ${type === 'portrait' ? '👤 Modo Retrato' : '📷 Foto'} • ${currentComposition.label}
+                        ${type === 'portrait' ? `👤 Retrato ${APERTURE_VALUES[currentApertureIndex].label}` : '📷 Foto'} • ${currentComposition.label}
                     </div>
                     <div class="photo-actions">
                         <button class="btn-close" onclick="this.closest('.photo-preview').remove()">Fechar</button>
@@ -1433,13 +1742,18 @@
                 }
                 
                 try {
-                    // Verificar se o navegador suporta MediaRecorder
                     if (typeof MediaRecorder === 'undefined') {
-                        throw new Error('MediaRecorder não suportado neste navegador');
+                        throw new Error('MediaRecorder não suportado');
+                    }
+
+                    // Para modo cinema, tentar capturar o canvas com efeito
+                    let sourceStream = stream;
+                    if (cinemaMode && canvasOutput && canvasOutput.captureStream) {
+                        sourceStream = canvasOutput.captureStream(30);
                     }
 
                     const options = { mimeType: 'video/mp4' };
-                    mediaRecorder = new MediaRecorder(stream, options);
+                    mediaRecorder = new MediaRecorder(sourceStream, options);
                     recordedChunks = [];
 
                     mediaRecorder.ondataavailable = (event) => {
@@ -1460,7 +1774,7 @@
                         preview.innerHTML = `
                             <video src="${url}" controls autoplay></video>
                             <div style="color:#aaa;font-size:11px;margin-top:8px;">
-                                ${cinemaMode ? '🎬 Modo Cinema' : '🎥 Vídeo'} • ${currentComposition.label}
+                                ${cinemaMode ? `🎬 Cinema ${APERTURE_VALUES[currentApertureIndex].label}` : '🎥 Vídeo'} • ${currentComposition.label}
                             </div>
                             <div class="photo-actions">
                                 <button class="btn-close" onclick="this.closest('.photo-preview').remove()">Fechar</button>
@@ -1482,7 +1796,7 @@
                         const secs = String(seconds % 60).padStart(2, '0');
                         document.getElementById('timerBadge').textContent = `${mins}:${secs}`;
                     }, 1000);
-                    document.getElementById('suggestion').textContent = cinemaMode ? '🎬 Gravando Cinema...' : '🔴 Gravando...';
+                    document.getElementById('suggestion').textContent = cinemaMode ? '🎬 Gravando Cinema com IA...' : '🔴 Gravando...';
                 } catch (err) {
                     console.error('Erro ao gravar:', err);
                     document.getElementById('suggestion').textContent = '⚠️ Erro ao gravar: ' + err.message;
@@ -1503,7 +1817,7 @@
                     root.innerHTML = `
                         <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;padding:30px;text-align:center;background:#000;color:#fff;">
                             <h2 style="font-size:24px;margin-bottom:10px;">📱 Dispositivo não compatível</h2>
-                            <p style="color:#aaa;max-width:300px;">Seu navegador não suporta acesso à câmera. Use um dispositivo com câmera e Safari/Chrome atualizado.</p>
+                            <p style="color:#aaa;max-width:300px;">Seu navegador não suporta acesso à câmera.</p>
                         </div>
                     `;
                     return false;
@@ -1521,16 +1835,16 @@
                 if (el && !el.textContent.includes('📚') && !el.textContent.includes('✅') && 
                     !el.textContent.includes('🔴') && !el.textContent.includes('🎬') && 
                     !el.textContent.includes('📍') && !el.textContent.includes('🎯') &&
-                    !el.textContent.includes('☀️') && !el.textContent.includes('🔍') &&
+                    !el.textContent.includes('⭕') && !el.textContent.includes('🔍') &&
                     !el.textContent.includes('👤') && !el.textContent.includes('📸') &&
                     !el.textContent.includes('⏳') && !el.textContent.includes('⚠️') &&
-                    isCameraReady) {
+                    !el.textContent.includes('🧠') && isCameraReady) {
                     const actions = [
                         'Mova para esquerda', 'Mova para direita', 'Aproxime', 'Afaste',
                         'Suba a câmera', 'Abaixe a câmera', 'Gire levemente',
                         'Alinhe ao horizonte', 'Posicione no ponto ideal',
                         `Aplique ${currentComposition.label}`,
-                        'Toque para focar', 'Ajuste a exposição'
+                        'Toque para focar', 'Ajuste a abertura'
                     ];
                     el.textContent = actions[Math.floor(Math.random() * actions.length)];
                 }
