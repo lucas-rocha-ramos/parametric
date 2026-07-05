@@ -86,6 +86,16 @@
             z-index: 6;
             backdrop-filter: blur(4px);
             pointer-events: none;
+            text-align: center;
+            max-width: 90%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .guide-label .position-indicator {
+            display: block;
+            font-size: 10px;
+            color: rgba(255,215,0,0.6);
+            margin-top: 2px;
         }
         
         .bottom-controls {
@@ -158,6 +168,9 @@
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
             white-space: nowrap;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.3px;
         }
         .comp-chip.active {
             background: rgba(255, 215, 0, 0.2);
@@ -166,6 +179,17 @@
         }
         .comp-chip:active {
             transform: scale(0.92);
+        }
+        .comp-chip .pos-indicator {
+            display: block;
+            font-size: 7px;
+            color: rgba(255,215,0,0.5);
+            text-align: center;
+            margin-top: 1px;
+            font-weight: 400;
+        }
+        .comp-chip.active .pos-indicator {
+            color: #fbbf24;
         }
         
         .action-buttons {
@@ -422,6 +446,21 @@
             transform: scale(0.92);
         }
         
+        .position-tip {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 9px;
+            color: rgba(255,215,0,0.5);
+            z-index: 7;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        
         @media (max-width: 430px) {
             .score-panel {
                 padding: 5px 8px;
@@ -442,7 +481,10 @@
             }
             .comp-chip {
                 font-size: 8px;
-                padding: 3px 8px;
+                padding: 3px 10px;
+            }
+            .comp-chip .pos-indicator {
+                font-size: 6px;
             }
             .action-btn {
                 width: 40px;
@@ -464,6 +506,9 @@
                 padding: 2px 8px;
                 bottom: 6px;
             }
+            .guide-label .position-indicator {
+                font-size: 8px;
+            }
             .bottom-controls {
                 padding: 10px 0 18px 0;
             }
@@ -476,37 +521,40 @@
                 padding: 2px 10px;
                 top: 12px;
             }
+            .position-tip {
+                font-size: 8px;
+                bottom: 45px;
+            }
         }
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script>
-        // TODAS AS 57 REGRAS DE COMPOSIÇÃO
-        const COMPOSITION_RULES = [
-            'Regra dos Terços', 'Proporção Áurea', 'Espiral Áurea', 'Regra do Centro',
-            'Regra dos Quartos', 'Regra dos Nove Quadrantes', 'Simetria',
-            'Assimetria Balanceada', 'Equilíbrio de Peso Visual', 'Regra dos Ímpares',
-            'Linhas Guia', 'Linhas Diagonais', 'Linhas Horizontais', 'Linhas Verticais',
-            'Pontos de Fuga', 'Enquadramento Natural', 'Moldura Dentro da Moldura',
-            'Camadas', 'Profundidade de Campo', 'Sobreposição de Elementos',
-            'Espaço Negativo', 'Espaço Positivo', 'Espaço Respirável',
-            'Minimalismo na Composição', 'Ritmo Visual', 'Repetição de Formas',
-            'Textura', 'Padrões Geométricos', 'Ponto Focal Único',
-            'Múltiplos Pontos Focais', 'Contraste de Foco', 'Isolamento do Sujeito',
-            'Bokeh', 'Luz Dura vs Luz Suave', 'Contraste Tonal', 'High Key',
-            'Low Key', 'Silhueta', 'Contraluz', 'Triângulos Composicionais',
-            'Círculos e Curvas', 'Formas Geométricas Implícitas', 'Composição Triangular',
-            'Hierarquia Visual', 'Fluxo de Leitura da Imagem', 'Direção Natural do Olhar',
-            'Peso Visual', 'Regra do Olhar', 'Regra da Cabeça', 'Plano de Fundo Limpo',
-            'Separação de Planos', 'Enquadramento Narrativo', 'Quebra Intencional de Regras',
-            'Caos Controlado', 'Composição Abstrata', 'Minimalismo Extremo', 'Assimetria Radical'
+        // 15 COMPOSIÇÕES COM POSIÇÕES
+        const COMPOSITIONS = [
+            { id: 'rule-of-thirds', label: 'RULE OF THIRDS', positions: ['padrão', 'invertido', 'vertical', 'horizontal'] },
+            { id: 'symmetry', label: 'SYMMETRY', positions: ['vertical', 'horizontal', 'central'] },
+            { id: 'phi-grid', label: 'PHI GRID', positions: ['padrão', 'invertido'] },
+            { id: 'fibonacci-spiral', label: 'FIBONACCI SPIRAL', positions: ['superior-esquerdo', 'superior-direito', 'inferior-esquerdo', 'inferior-direito'] },
+            { id: 'golden-triangles', label: 'GOLDEN TRIANGLES', positions: ['superior', 'inferior', 'esquerda', 'direita'] },
+            { id: 'vanishing-point', label: 'VANISHING POINT', positions: ['centro', 'superior', 'inferior', 'esquerda', 'direita'] },
+            { id: 'framing-depth', label: 'FRAMING DEPTH', positions: ['padrão', 'invertido'] },
+            { id: 'landscape-depth', label: 'LANDSCAPE DEPTH', positions: ['superior', 'inferior'] },
+            { id: 'leading-lines', label: 'LEADING LINES', positions: ['direita', 'esquerda', 'centro'] },
+            { id: 'lines-patterns', label: 'LINES AND PATTERNS', positions: ['horizontal', 'vertical', 'diagonal', 'curvo'] },
+            { id: 'fill-the-frame', label: 'FILL THE FRAME', positions: ['centro', 'superior', 'inferior'] },
+            { id: 'negative-space', label: 'NEGATIVE SPACE', positions: ['superior', 'inferior', 'esquerda', 'direita'] },
+            { id: 'left-to-right', label: 'LEFT TO RIGHT', positions: ['esquerda→direita', 'direita→esquerda'] },
+            { id: 'dynamic-symmetry', label: 'DYNAMIC SYMMETRY', positions: ['padrão', 'invertido'] },
+            { id: 'harmonic-armature', label: 'HARMONIC ARMATURE', positions: ['padrão', 'refletido'] }
         ];
 
         (function() {
             const root = document.getElementById('root');
-            let currentFacingMode = 'environment';
-            let currentGuide = 'Regra dos Terços';
+            let currentComposition = COMPOSITIONS[0];
+            let currentPositionIndex = 0;
+            let facingMode = 'environment';
             let stream = null;
             let isCameraReady = false;
             let videoElement = null;
@@ -519,24 +567,81 @@
             let availableCameras = [];
             let currentCameraIndex = 0;
 
-            // Renderizar overlay da guia
-            const renderGuideOverlay = (guide) => {
-                const grid = document.getElementById('overlayGrid');
+            // Função para obter posição atual
+            const getCurrentPosition = () => {
+                return currentComposition.positions[currentPositionIndex % currentComposition.positions.length];
+            };
+
+            // Função para avançar posição
+            const nextPosition = () => {
+                currentPositionIndex = (currentPositionIndex + 1) % currentComposition.positions.length;
+                renderGuideOverlay(currentComposition, getCurrentPosition());
+                updateChips();
+                updateLabel();
+            };
+
+            // Atualizar chips
+            const updateChips = () => {
+                document.querySelectorAll('.comp-chip').forEach(chip => {
+                    const id = chip.dataset.id;
+                    const isActive = id === currentComposition.id;
+                    chip.classList.toggle('active', isActive);
+                    if (isActive) {
+                        const pos = getCurrentPosition();
+                        const posDisplay = chip.querySelector('.pos-indicator');
+                        if (posDisplay) posDisplay.textContent = `📍 ${pos}`;
+                    }
+                });
+            };
+
+            // Atualizar label
+            const updateLabel = () => {
                 const label = document.getElementById('guideLabel');
-                label.textContent = guide;
+                const pos = getCurrentPosition();
+                label.innerHTML = `${currentComposition.label} <span class="position-indicator">📍 ${pos}</span>`;
+            };
+
+            // Renderizar overlay da composição
+            const renderGuideOverlay = (comp, position) => {
+                const grid = document.getElementById('overlayGrid');
                 grid.innerHTML = '';
+                updateLabel();
 
                 let container = document.createElement('div');
                 container.style.cssText = 'width:100%;height:100%;position:relative;';
 
-                switch(guide) {
-                    case 'Regra dos Terços': {
-                        const lines = [
-                            { left: '33.33%', top: '0', width: '1px', height: '100%' },
-                            { left: '66.66%', top: '0', width: '1px', height: '100%' },
-                            { left: '0', top: '33.33%', width: '100%', height: '1px' },
-                            { left: '0', top: '66.66%', width: '100%', height: '1px' }
-                        ];
+                const id = comp.id;
+                const isInverted = position === 'invertido' || position === 'refletido' || position === 'inferior';
+                const isVertical = position === 'vertical';
+                const isHorizontal = position === 'horizontal';
+
+                switch(id) {
+                    case 'rule-of-thirds': {
+                        const lines = [];
+                        if (position === 'vertical') {
+                            lines.push({ left: '33.33%', top: '0', width: '1px', height: '100%' });
+                            lines.push({ left: '66.66%', top: '0', width: '1px', height: '100%' });
+                        } else if (position === 'horizontal') {
+                            lines.push({ top: '33.33%', left: '0', width: '100%', height: '1px' });
+                            lines.push({ top: '66.66%', left: '0', width: '100%', height: '1px' });
+                        } else {
+                            lines.push({ left: '33.33%', top: '0', width: '1px', height: '100%' });
+                            lines.push({ left: '66.66%', top: '0', width: '1px', height: '100%' });
+                            lines.push({ top: '33.33%', left: '0', width: '100%', height: '1px' });
+                            lines.push({ top: '66.66%', left: '0', width: '100%', height: '1px' });
+                        }
+                        if (position === 'invertido') {
+                            // Inverte a ênfase - marcamos os cantos
+                            const corners = [
+                                { left: '10%', top: '10%', w: '15%', h: '15%' },
+                                { left: '75%', top: '75%', w: '15%', h: '15%' }
+                            ];
+                            corners.forEach(c => {
+                                const div = document.createElement('div');
+                                div.style.cssText = `position:absolute;left:${c.left};top:${c.top};width:${c.w};height:${c.h};border:1px solid rgba(255,215,0,0.2);border-radius:4px;`;
+                                container.appendChild(div);
+                            });
+                        }
                         lines.forEach(l => {
                             const div = document.createElement('div');
                             div.className = 'grid-line';
@@ -545,227 +650,154 @@
                         });
                         break;
                     }
-                    case 'Regra dos Quartos': {
-                        const lines = [
-                            { left: '25%', top: '0', width: '1px', height: '100%' },
-                            { left: '50%', top: '0', width: '1px', height: '100%' },
-                            { left: '75%', top: '0', width: '1px', height: '100%' },
-                            { left: '0', top: '25%', width: '100%', height: '1px' },
-                            { left: '0', top: '50%', width: '100%', height: '1px' },
-                            { left: '0', top: '75%', width: '100%', height: '1px' }
-                        ];
-                        lines.forEach(l => {
+                    case 'symmetry': {
+                        if (position === 'vertical') {
                             const div = document.createElement('div');
                             div.className = 'grid-line';
-                            Object.assign(div.style, l);
+                            div.style.cssText = 'left:50%;top:0;width:1px;height:100%;';
                             container.appendChild(div);
-                        });
-                        break;
-                    }
-                    case 'Regra dos Nove Quadrantes': {
-                        for (let i = 1; i <= 8; i++) {
-                            const pct = (i / 9 * 100).toFixed(2);
+                        } else if (position === 'horizontal') {
+                            const div = document.createElement('div');
+                            div.className = 'grid-line';
+                            div.style.cssText = 'top:50%;left:0;width:100%;height:1px;';
+                            container.appendChild(div);
+                        } else {
                             const div1 = document.createElement('div');
                             div1.className = 'grid-line';
-                            div1.style.cssText = `left:${pct}%;top:0;width:1px;height:100%;opacity:${i%3===0?0.5:0.25};`;
+                            div1.style.cssText = 'left:50%;top:0;width:1px;height:100%;';
                             container.appendChild(div1);
                             const div2 = document.createElement('div');
                             div2.className = 'grid-line';
-                            div2.style.cssText = `top:${pct}%;left:0;width:100%;height:1px;opacity:${i%3===0?0.5:0.25};`;
+                            div2.style.cssText = 'top:50%;left:0;width:100%;height:1px;';
                             container.appendChild(div2);
+                            // Círculo central
+                            const circle = document.createElement('div');
+                            circle.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20%;height:20%;border:1px solid rgba(255,215,0,0.2);border-radius:50%;';
+                            container.appendChild(circle);
                         }
                         break;
                     }
-                    case 'Simetria': {
-                        const div = document.createElement('div');
-                        div.className = 'grid-line';
-                        div.style.cssText = 'left:50%;top:0;width:1px;height:100%;';
-                        container.appendChild(div);
+                    case 'phi-grid': {
+                        const ratio = isInverted ? 61.8 : 38.2;
+                        const div1 = document.createElement('div');
+                        div1.className = 'grid-line';
+                        div1.style.cssText = `left:${ratio}%;top:0;width:1px;height:100%;`;
+                        container.appendChild(div1);
+                        const div2 = document.createElement('div');
+                        div2.className = 'grid-line';
+                        div2.style.cssText = `top:${ratio}%;left:0;width:100%;height:1px;`;
+                        container.appendChild(div2);
+                        // Retângulo áureo
+                        const rect = document.createElement('div');
+                        const rPos = isInverted ? 61.8 : 38.2;
+                        const rSize = isInverted ? 38.2 : 23.6;
+                        rect.style.cssText = `position:absolute;left:${rPos}%;top:${rPos}%;width:${rSize}%;height:${rSize}%;border:1px solid rgba(255,215,0,0.15);border-radius:4px;`;
+                        container.appendChild(rect);
                         break;
                     }
-                    case 'Linhas Diagonais': {
+                    case 'fibonacci-spiral': {
                         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                         svg.setAttribute('width', '100%');
                         svg.setAttribute('height', '100%');
                         svg.style.cssText = 'position:absolute;top:0;left:0;';
-                        const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                        line1.setAttribute('x1', '0%');
-                        line1.setAttribute('y1', '0%');
-                        line1.setAttribute('x2', '100%');
-                        line1.setAttribute('y2', '100%');
-                        line1.setAttribute('stroke', 'rgba(255,215,0,0.5)');
-                        line1.setAttribute('stroke-width', '1');
-                        svg.appendChild(line1);
-                        const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                        line2.setAttribute('x1', '100%');
-                        line2.setAttribute('y1', '0%');
-                        line2.setAttribute('x2', '0%');
-                        line2.setAttribute('y2', '100%');
-                        line2.setAttribute('stroke', 'rgba(255,215,0,0.5)');
-                        line2.setAttribute('stroke-width', '1');
-                        svg.appendChild(line2);
-                        container.appendChild(svg);
-                        break;
-                    }
-                    case 'Linhas Horizontais': {
-                        [33.33, 66.66].forEach(pct => {
-                            const div = document.createElement('div');
-                            div.className = 'grid-line';
-                            div.style.cssText = `top:${pct}%;left:0;width:100%;height:1px;`;
-                            container.appendChild(div);
-                        });
-                        break;
-                    }
-                    case 'Linhas Verticais': {
-                        [33.33, 66.66].forEach(pct => {
-                            const div = document.createElement('div');
-                            div.className = 'grid-line';
-                            div.style.cssText = `left:${pct}%;top:0;width:1px;height:100%;`;
-                            container.appendChild(div);
-                        });
-                        break;
-                    }
-                    case 'Pontos de Fuga': {
-                        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                        svg.setAttribute('width', '100%');
-                        svg.setAttribute('height', '100%');
-                        svg.style.cssText = 'position:absolute;top:0;left:0;';
-                        const lines = [
-                            ['50%','50%','10%','10%'],
-                            ['50%','50%','90%','10%'],
-                            ['50%','50%','10%','90%'],
-                            ['50%','50%','90%','90%']
-                        ];
-                        lines.forEach(([x1,y1,x2,y2]) => {
-                            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                            line.setAttribute('x1', x1);
-                            line.setAttribute('y1', y1);
-                            line.setAttribute('x2', x2);
-                            line.setAttribute('y2', y2);
-                            line.setAttribute('stroke', 'rgba(255,215,0,0.35)');
-                            line.setAttribute('stroke-width', '1');
-                            svg.appendChild(line);
-                        });
-                        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                        circle.setAttribute('cx', '50%');
-                        circle.setAttribute('cy', '50%');
-                        circle.setAttribute('r', '4');
-                        circle.setAttribute('fill', 'rgba(255,215,0,0.8)');
-                        svg.appendChild(circle);
-                        container.appendChild(svg);
-                        break;
-                    }
-                    case 'Proporção Áurea':
-                    case 'Espiral Áurea': {
-                        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                        svg.setAttribute('width', '100%');
-                        svg.setAttribute('height', '100%');
-                        svg.style.cssText = 'position:absolute;top:0;left:0;';
-                        const rects = [
-                            {x:38.2,y:38.2,w:23.6,h:23.6},
-                            {x:38.2,y:61.8,w:23.6,h:23.6},
-                            {x:61.8,y:38.2,w:23.6,h:23.6}
-                        ];
-                        rects.forEach(r => {
-                            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                            rect.setAttribute('x', r.x);
-                            rect.setAttribute('y', r.y);
-                            rect.setAttribute('width', r.w);
-                            rect.setAttribute('height', r.h);
-                            rect.setAttribute('fill', 'none');
-                            rect.setAttribute('stroke', 'rgba(255,215,0,0.25)');
-                            rect.setAttribute('stroke-width', '1');
-                            svg.appendChild(rect);
-                        });
-                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                        path.setAttribute('d', 'M50,50 Q60,40 70,50 Q80,60 70,70 Q60,80 50,70 Q40,60 50,50');
-                        path.setAttribute('fill', 'none');
-                        path.setAttribute('stroke', 'rgba(255,215,0,0.6)');
-                        path.setAttribute('stroke-width', '1.5');
-                        svg.appendChild(path);
+                        
+                        let cx = 50, cy = 50;
+                        let startX = 50, startY = 50;
+                        let scale = 1;
+                        
+                        if (position === 'superior-esquerdo') { cx = 20; cy = 20; }
+                        else if (position === 'superior-direito') { cx = 80; cy = 20; }
+                        else if (position === 'inferior-esquerdo') { cx = 20; cy = 80; }
+                        else if (position === 'inferior-direito') { cx = 80; cy = 80; }
+                        
+                        const spiral = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        const d = `M${cx},${cy} Q${cx+10},${cy-10} ${cx+20},${cy} Q${cx+30},${cy+10} ${cx+20},${cy+20} Q${cx+10},${cy+30} ${cx},${cy+20} Q${cx-10},${cy+10} ${cx},${cy}`;
+                        spiral.setAttribute('d', d);
+                        spiral.setAttribute('fill', 'none');
+                        spiral.setAttribute('stroke', 'rgba(255,215,0,0.6)');
+                        spiral.setAttribute('stroke-width', '1.5');
+                        svg.appendChild(spiral);
+                        
+                        // Círculo no centro da espiral
                         const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                        dot.setAttribute('cx', '50');
-                        dot.setAttribute('cy', '50');
-                        dot.setAttribute('r', '2');
+                        dot.setAttribute('cx', cx);
+                        dot.setAttribute('cy', cy);
+                        dot.setAttribute('r', '3');
                         dot.setAttribute('fill', 'rgba(255,215,0,0.8)');
                         svg.appendChild(dot);
+                        
                         container.appendChild(svg);
                         break;
                     }
-                    case 'Triângulos Composicionais':
-                    case 'Composição Triangular': {
+                    case 'golden-triangles': {
                         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                         svg.setAttribute('width', '100%');
                         svg.setAttribute('height', '100%');
                         svg.style.cssText = 'position:absolute;top:0;left:0;';
+                        
+                        let points = '50,5 5,95 95,95';
+                        if (position === 'inferior') points = '50,95 5,5 95,5';
+                        else if (position === 'esquerda') points = '5,50 95,5 95,95';
+                        else if (position === 'direita') points = '95,50 5,5 5,95';
+                        
                         const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                        poly.setAttribute('points', '50,5 5,95 95,95');
+                        poly.setAttribute('points', points);
                         poly.setAttribute('fill', 'none');
                         poly.setAttribute('stroke', 'rgba(255,215,0,0.5)');
                         poly.setAttribute('stroke-width', '1.5');
                         svg.appendChild(poly);
-                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                        line.setAttribute('x1', '50');
-                        line.setAttribute('y1', '5');
-                        line.setAttribute('x2', '50');
-                        line.setAttribute('y2', '95');
-                        line.setAttribute('stroke', 'rgba(255,215,0,0.2)');
-                        line.setAttribute('stroke-width', '0.5');
-                        line.setAttribute('stroke-dasharray', '3,3');
-                        svg.appendChild(line);
+                        
                         container.appendChild(svg);
                         break;
                     }
-                    case 'Círculos e Curvas': {
+                    case 'vanishing-point': {
                         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                         svg.setAttribute('width', '100%');
                         svg.setAttribute('height', '100%');
                         svg.style.cssText = 'position:absolute;top:0;left:0;';
-                        const circles = [
-                            {cx:50,cy:50,r:30},
-                            {cx:50,cy:50,r:15}
+                        
+                        let vx = 50, vy = 50;
+                        if (position === 'superior') { vx = 50; vy = 10; }
+                        else if (position === 'inferior') { vx = 50; vy = 90; }
+                        else if (position === 'esquerda') { vx = 10; vy = 50; }
+                        else if (position === 'direita') { vx = 90; vy = 50; }
+                        
+                        const lines = [
+                            [vx, vy, 10, 10], [vx, vy, 90, 10],
+                            [vx, vy, 10, 90], [vx, vy, 90, 90],
+                            [vx, vy, 10, 50], [vx, vy, 90, 50],
+                            [vx, vy, 50, 10], [vx, vy, 50, 90]
                         ];
-                        circles.forEach(c => {
-                            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                            circle.setAttribute('cx', c.cx + '%');
-                            circle.setAttribute('cy', c.cy + '%');
-                            circle.setAttribute('r', c.r + '%');
-                            circle.setAttribute('fill', 'none');
-                            circle.setAttribute('stroke', 'rgba(255,215,0,0.35)');
-                            circle.setAttribute('stroke-width', '1');
-                            svg.appendChild(circle);
+                        lines.forEach(([x1,y1,x2,y2]) => {
+                            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                            line.setAttribute('x1', x1 + '%');
+                            line.setAttribute('y1', y1 + '%');
+                            line.setAttribute('x2', x2 + '%');
+                            line.setAttribute('y2', y2 + '%');
+                            line.setAttribute('stroke', `rgba(255,215,0,${Math.random()*0.2+0.2})`);
+                            line.setAttribute('stroke-width', '1');
+                            svg.appendChild(line);
                         });
+                        
+                        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        dot.setAttribute('cx', vx + '%');
+                        dot.setAttribute('cy', vy + '%');
+                        dot.setAttribute('r', '5');
+                        dot.setAttribute('fill', 'rgba(255,215,0,0.8)');
+                        svg.appendChild(dot);
+                        
                         container.appendChild(svg);
                         break;
                     }
-                    case 'Linhas Guia': {
-                        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                        svg.setAttribute('width', '100%');
-                        svg.setAttribute('height', '100%');
-                        svg.style.cssText = 'position:absolute;top:0;left:0;';
-                        const path1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                        path1.setAttribute('d', 'M10,90 Q30,70 50,50 Q70,30 90,10');
-                        path1.setAttribute('fill', 'none');
-                        path1.setAttribute('stroke', 'rgba(255,215,0,0.4)');
-                        path1.setAttribute('stroke-width', '1.5');
-                        path1.setAttribute('stroke-dasharray', '5,5');
-                        svg.appendChild(path1);
-                        const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                        path2.setAttribute('d', 'M10,70 Q30,50 50,50 Q70,50 90,50');
-                        path2.setAttribute('fill', 'none');
-                        path2.setAttribute('stroke', 'rgba(255,215,0,0.25)');
-                        path2.setAttribute('stroke-width', '1');
-                        path2.setAttribute('stroke-dasharray', '3,3');
-                        svg.appendChild(path2);
-                        container.appendChild(svg);
-                        break;
-                    }
-                    case 'Enquadramento Natural':
-                    case 'Moldura Dentro da Moldura': {
+                    case 'framing-depth': {
                         const divs = [
-                            {top:'10%',left:'10%',width:'80%',height:'80%',borderWidth:'2px',opacity:0.4},
-                            {top:'20%',left:'20%',width:'60%',height:'60%',borderWidth:'1px',opacity:0.2}
+                            {top: '10%', left: '10%', width: '80%', height: '80%', borderWidth: '2px', opacity: 0.3},
+                            {top: '20%', left: '20%', width: '60%', height: '60%', borderWidth: '1px', opacity: 0.15}
                         ];
+                        if (isInverted) {
+                            divs[0].top = '5%'; divs[0].left = '5%'; divs[0].width = '90%'; divs[0].height = '90%';
+                            divs[1].top = '15%'; divs[1].left = '15%'; divs[1].width = '70%'; divs[1].height = '70%';
+                        }
                         divs.forEach(d => {
                             const div = document.createElement('div');
                             div.style.cssText = `position:absolute;top:${d.top};left:${d.left};width:${d.width};height:${d.height};border:${d.borderWidth} solid rgba(255,215,0,${d.opacity});border-radius:8px;pointer-events:none;`;
@@ -773,100 +805,245 @@
                         });
                         break;
                     }
-                    case 'Camadas': {
-                        [33, 66].forEach(pct => {
+                    case 'landscape-depth': {
+                        const positions = position === 'superior' ? [70, 85] : [15, 30];
+                        positions.forEach(p => {
                             const div = document.createElement('div');
-                            div.style.cssText = `position:absolute;bottom:${pct}%;left:0;width:100%;height:1px;border-top:1px solid rgba(255,215,0,${pct===33?0.3:0.2});`;
+                            div.style.cssText = `position:absolute;top:${p}%;left:0;width:100%;height:1px;border-top:1px solid rgba(255,215,0,${p===70||p===15?0.3:0.15});`;
                             container.appendChild(div);
                         });
-                        break;
-                    }
-                    case 'Regra do Centro': {
-                        const div1 = document.createElement('div');
-                        div1.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:30%;height:30%;border:2px solid rgba(255,215,0,0.4);border-radius:50%;';
-                        container.appendChild(div1);
-                        const div2 = document.createElement('div');
-                        div2.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:10%;height:10%;border:1px solid rgba(255,215,0,0.6);border-radius:50%;';
-                        container.appendChild(div2);
-                        break;
-                    }
-                    case 'Regra dos Ímpares': {
-                        [30,50,70].forEach(pct => {
+                        // Adicionar indicadores de profundidade
+                        for (let i = 0; i < 3; i++) {
                             const div = document.createElement('div');
-                            div.style.cssText = `position:absolute;top:30%;left:${pct}%;width:8px;height:8px;background:rgba(255,215,0,0.4);border-radius:50%;transform:translateX(-50%);`;
+                            const y = position === 'superior' ? 10 + i * 25 : 30 + i * 20;
+                            const w = 60 - i * 15;
+                            div.style.cssText = `position:absolute;top:${y}%;left:${(100-w)/2}%;width:${w}%;height:1px;border-top:1px solid rgba(255,215,0,${0.1 - i*0.02});`;
                             container.appendChild(div);
-                        });
+                        }
                         break;
                     }
-                    case 'Espaço Negativo': {
-                        const div1 = document.createElement('div');
-                        div1.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:2px solid rgba(255,215,0,0.15);';
-                        container.appendChild(div1);
-                        const div2 = document.createElement('div');
-                        div2.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40%;height:40%;border:1px solid rgba(255,215,0,0.3);';
-                        container.appendChild(div2);
-                        const div3 = document.createElement('div');
-                        div3.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20%;height:20%;background:rgba(255,215,0,0.08);border-radius:50%;';
-                        container.appendChild(div3);
-                        break;
-                    }
-                    case 'Silhueta': {
-                        const div1 = document.createElement('div');
-                        div1.style.cssText = 'position:absolute;bottom:0;left:0;width:100%;height:40%;background:rgba(0,0,0,0.5);';
-                        container.appendChild(div1);
-                        const div2 = document.createElement('div');
-                        div2.style.cssText = 'position:absolute;bottom:40%;left:30%;width:40%;height:30%;background:rgba(0,0,0,0.3);clip-path:polygon(0% 100%,50% 0%,100% 100%);';
-                        container.appendChild(div2);
-                        break;
-                    }
-                    case 'Contraluz': {
+                    case 'leading-lines': {
                         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                         svg.setAttribute('width', '100%');
                         svg.setAttribute('height', '100%');
                         svg.style.cssText = 'position:absolute;top:0;left:0;';
-                        [20,10,5].forEach(r => {
-                            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                            circle.setAttribute('cx', '50%');
-                            circle.setAttribute('cy', '30%');
-                            circle.setAttribute('r', r + '%');
-                            circle.setAttribute('fill', `rgba(255,200,50,${r===20?0.08:r===10?0.15:0.25})`);
-                            svg.appendChild(circle);
-                        });
+                        
+                        let startX = 10, startY = 90, endX = 90, endY = 10;
+                        if (position === 'esquerda') { startX = 10; startY = 50; endX = 90; endY = 50; }
+                        else if (position === 'centro') { startX = 50; startY = 90; endX = 50; endY = 10; }
+                        
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        path.setAttribute('d', `M${startX},${startY} Q${(startX+endX)/2},${(startY+endY)/2-20} ${endX},${endY}`);
+                        path.setAttribute('fill', 'none');
+                        path.setAttribute('stroke', 'rgba(255,215,0,0.5)');
+                        path.setAttribute('stroke-width', '2');
+                        path.setAttribute('stroke-dasharray', '8,4');
+                        svg.appendChild(path);
+                        
+                        // Linhas auxiliares
+                        for (let i = 1; i <= 3; i++) {
+                            const pct = i * 25;
+                            const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                            path2.setAttribute('d', `M${startX + pct*0.3},${startY - pct*0.2} Q${(startX+endX)/2 + pct*0.1},${(startY+endY)/2-20} ${endX - pct*0.3},${endY + pct*0.2}`);
+                            path2.setAttribute('fill', 'none');
+                            path2.setAttribute('stroke', `rgba(255,215,0,${0.2 - i*0.04})`);
+                            path2.setAttribute('stroke-width', '0.8');
+                            path2.setAttribute('stroke-dasharray', '4,4');
+                            svg.appendChild(path2);
+                        }
+                        
                         container.appendChild(svg);
                         break;
                     }
-                    case 'Bokeh': {
-                        const positions = [
-                            {top:20,left:15,size:8,blur:2,opacity:0.3},
-                            {top:25,left:75,size:12,blur:3,opacity:0.2},
-                            {top:60,left:20,size:6,blur:1,opacity:0.3},
-                            {top:70,left:80,size:10,blur:4,opacity:0.2},
-                            {top:40,left:50,size:4,blur:1,opacity:0.4}
+                    case 'lines-patterns': {
+                        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                        svg.setAttribute('width', '100%');
+                        svg.setAttribute('height', '100%');
+                        svg.style.cssText = 'position:absolute;top:0;left:0;';
+                        
+                        let pattern = [];
+                        if (position === 'horizontal') {
+                            for (let i = 0; i < 10; i++) {
+                                pattern.push({x1:0, y1:i*11, x2:100, y2:i*11});
+                            }
+                        } else if (position === 'vertical') {
+                            for (let i = 0; i < 10; i++) {
+                                pattern.push({x1:i*11, y1:0, x2:i*11, y2:100});
+                            }
+                        } else if (position === 'diagonal') {
+                            for (let i = -5; i < 15; i++) {
+                                pattern.push({x1:i*10, y1:0, x2:i*10+100, y2:100});
+                            }
+                        } else {
+                            for (let i = 0; i < 8; i++) {
+                                pattern.push({x1:0, y1:i*14, x2:100, y2:i*14});
+                                pattern.push({x1:i*14, y1:0, x2:i*14, y2:100});
+                            }
+                        }
+                        
+                        pattern.forEach(p => {
+                            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                            line.setAttribute('x1', p.x1 + '%');
+                            line.setAttribute('y1', p.y1 + '%');
+                            line.setAttribute('x2', p.x2 + '%');
+                            line.setAttribute('y2', p.y2 + '%');
+                            line.setAttribute('stroke', `rgba(255,215,0,${0.1 + Math.random()*0.15})`);
+                            line.setAttribute('stroke-width', '0.5');
+                            svg.appendChild(line);
+                        });
+                        
+                        container.appendChild(svg);
+                        break;
+                    }
+                    case 'fill-the-frame': {
+                        let top = 20, left = 20, width = 60, height = 60;
+                        if (position === 'superior') { top = 5; left = 20; width = 60; height = 45; }
+                        else if (position === 'inferior') { top = 50; left = 20; width = 60; height = 45; }
+                        
+                        const div = document.createElement('div');
+                        div.style.cssText = `position:absolute;top:${top}%;left:${left}%;width:${width}%;height:${height}%;border:2px solid rgba(255,215,0,0.3);border-radius:4px;`;
+                        container.appendChild(div);
+                        
+                        // Indicadores de preenchimento
+                        const indicators = [
+                            {x: 30, y: 30}, {x: 50, y: 30}, {x: 70, y: 30},
+                            {x: 30, y: 50}, {x: 50, y: 50}, {x: 70, y: 50},
+                            {x: 30, y: 70}, {x: 50, y: 70}, {x: 70, y: 70}
                         ];
-                        positions.forEach(p => {
-                            const div = document.createElement('div');
-                            div.style.cssText = `position:absolute;top:${p.top}%;left:${p.left}%;width:${p.size}px;height:${p.size}px;background:rgba(255,215,0,${p.opacity});border-radius:50%;filter:blur(${p.blur}px);transform:translate(-50%,-50%);`;
-                            container.appendChild(div);
+                        indicators.forEach(ind => {
+                            const dot = document.createElement('div');
+                            dot.style.cssText = `position:absolute;left:${ind.x}%;top:${ind.y}%;width:4px;height:4px;background:rgba(255,215,0,0.2);border-radius:50%;transform:translate(-50%,-50%);`;
+                            container.appendChild(dot);
                         });
                         break;
                     }
-                    case 'High Key': {
-                        const div = document.createElement('div');
-                        div.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at center, rgba(255,255,255,0.12), transparent 70%);';
-                        container.appendChild(div);
+                    case 'negative-space': {
+                        const rect = document.createElement('div');
+                        let top = 20, left = 20, width = 60, height = 60;
+                        if (position === 'superior') { top = 5; left = 20; width = 60; height = 40; }
+                        else if (position === 'inferior') { top = 55; left = 20; width = 60; height = 40; }
+                        else if (position === 'esquerda') { top = 20; left = 5; width = 40; height = 60; }
+                        else if (position === 'direita') { top = 20; left = 55; width = 40; height = 60; }
+                        
+                        rect.style.cssText = `position:absolute;top:${top}%;left:${left}%;width:${width}%;height:${height}%;border:2px solid rgba(255,215,0,0.2);border-radius:4px;`;
+                        container.appendChild(rect);
+                        
+                        // Área de espaço negativo destacada
+                        const neg = document.createElement('div');
+                        const nTop = position === 'superior' ? 50 : position === 'inferior' ? 10 : 20;
+                        const nLeft = position === 'esquerda' ? 50 : position === 'direita' ? 10 : 20;
+                        neg.style.cssText = `position:absolute;top:${nTop}%;left:${nLeft}%;width:40%;height:40%;background:rgba(255,215,0,0.05);border:1px dashed rgba(255,215,0,0.15);border-radius:4px;`;
+                        container.appendChild(neg);
                         break;
                     }
-                    case 'Low Key': {
-                        const div1 = document.createElement('div');
-                        div1.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5));';
-                        container.appendChild(div1);
-                        const div2 = document.createElement('div');
-                        div2.style.cssText = 'position:absolute;bottom:20%;left:50%;transform:translateX(-50%);width:60%;height:1px;background:rgba(255,215,0,0.15);';
-                        container.appendChild(div2);
+                    case 'left-to-right': {
+                        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                        svg.setAttribute('width', '100%');
+                        svg.setAttribute('height', '100%');
+                        svg.style.cssText = 'position:absolute;top:0;left:0;';
+                        
+                        const dir = position === 'direita→esquerda' ? -1 : 1;
+                        const startX = dir === 1 ? 10 : 90;
+                        const endX = dir === 1 ? 90 : 10;
+                        
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        path.setAttribute('d', `M${startX},50 Q${(startX+endX)/2},30 ${endX},50`);
+                        path.setAttribute('fill', 'none');
+                        path.setAttribute('stroke', 'rgba(255,215,0,0.5)');
+                        path.setAttribute('stroke-width', '2');
+                        path.setAttribute('stroke-dasharray', '6,3');
+                        svg.appendChild(path);
+                        
+                        // Setas de direção
+                        for (let i = 0; i < 3; i++) {
+                            const x = startX + (endX - startX) * (0.2 + i * 0.3);
+                            const tri = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                            const points = dir === 1 ? 
+                                `${x+5},47 ${x+5},53 ${x+12},50` :
+                                `${x-5},47 ${x-5},53 ${x-12},50`;
+                            tri.setAttribute('points', points);
+                            tri.setAttribute('fill', 'rgba(255,215,0,0.3)');
+                            svg.appendChild(tri);
+                        }
+                        
+                        container.appendChild(svg);
+                        break;
+                    }
+                    case 'dynamic-symmetry': {
+                        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                        svg.setAttribute('width', '100%');
+                        svg.setAttribute('height', '100%');
+                        svg.style.cssText = 'position:absolute;top:0;left:0;';
+                        
+                        const lines = [
+                            ['0%','0%','100%','100%'],
+                            ['100%','0%','0%','100%'],
+                            ['0%','50%','100%','50%'],
+                            ['50%','0%','50%','100%']
+                        ];
+                        if (isInverted) {
+                            lines.push(['0%','25%','100%','75%']);
+                            lines.push(['25%','0%','75%','100%']);
+                        }
+                        
+                        lines.forEach(([x1,y1,x2,y2]) => {
+                            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                            line.setAttribute('x1', x1);
+                            line.setAttribute('y1', y1);
+                            line.setAttribute('x2', x2);
+                            line.setAttribute('y2', y2);
+                            line.setAttribute('stroke', `rgba(255,215,0,${isInverted ? 0.15 : 0.25})`);
+                            line.setAttribute('stroke-width', '0.8');
+                            svg.appendChild(line);
+                        });
+                        
+                        container.appendChild(svg);
+                        break;
+                    }
+                    case 'harmonic-armature': {
+                        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                        svg.setAttribute('width', '100%');
+                        svg.setAttribute('height', '100%');
+                        svg.style.cssText = 'position:absolute;top:0;left:0;';
+                        
+                        const points = [
+                            [20,20], [50,20], [80,20],
+                            [20,50], [50,50], [80,50],
+                            [20,80], [50,80], [80,80]
+                        ];
+                        const ref = isInverted ? 
+                            [[0,0], [100,100], [0,100], [100,0]] :
+                            [[20,20], [80,20], [80,80], [20,80]];
+                        
+                        // Linhas da armadura
+                        for (let i = 0; i < ref.length; i++) {
+                            for (let j = i+1; j < ref.length; j++) {
+                                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                                line.setAttribute('x1', ref[i][0] + '%');
+                                line.setAttribute('y1', ref[i][1] + '%');
+                                line.setAttribute('x2', ref[j][0] + '%');
+                                line.setAttribute('y2', ref[j][1] + '%');
+                                line.setAttribute('stroke', 'rgba(255,215,0,0.12)');
+                                line.setAttribute('stroke-width', '0.6');
+                                svg.appendChild(line);
+                            }
+                        }
+                        
+                        // Pontos da armadura
+                        points.forEach(([x,y]) => {
+                            const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                            dot.setAttribute('cx', x + '%');
+                            dot.setAttribute('cy', y + '%');
+                            dot.setAttribute('r', '2');
+                            dot.setAttribute('fill', 'rgba(255,215,0,0.2)');
+                            svg.appendChild(dot);
+                        });
+                        
+                        container.appendChild(svg);
                         break;
                     }
                     default: {
-                        // Para regras sem overlay específico
+                        // Fallback
                         const div = document.createElement('div');
                         div.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:1px dashed rgba(255,215,0,0.1);';
                         container.appendChild(div);
@@ -876,7 +1053,144 @@
                 grid.appendChild(container);
             };
 
-            // Detectar câmeras disponíveis
+            // Criar app
+            const createApp = () => {
+                root.innerHTML = `
+                    <div class="camera-container" id="app">
+                        <div class="video-wrapper">
+                            <video id="video" autoplay playsinline muted></video>
+                            <div class="overlay-grid" id="overlayGrid"></div>
+                            <div class="guide-label" id="guideLabel">${currentComposition.label}</div>
+                            
+                            <div class="camera-selector" id="cameraSelector"></div>
+                            
+                            <div class="score-panel">
+                                <div class="score-item"><span>Composição</span><span class="score-value" id="compScore">78%</span></div>
+                                <div class="score-item"><span>Iluminação</span><span class="score-value" id="lightScore">65%</span></div>
+                                <div class="score-item"><span>Enquadramento</span><span class="score-value" id="frameScore">72%</span></div>
+                                <div class="score-item" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:3px;margin-top:1px">
+                                    <span>Geral</span>
+                                    <span class="score-value" style="color:#fbbf24" id="overallScore">72</span>
+                                </div>
+                            </div>
+
+                            <div class="ai-suggestion" id="suggestion">📸 Toque na composição para alternar posição</div>
+
+                            <div class="bottom-controls">
+                                <div class="mode-filters">
+                                    <button class="mode-filter-btn active" data-mode="camera">📷 Foto</button>
+                                    <button class="mode-filter-btn" data-mode="video">🎥 Vídeo</button>
+                                    <button class="mode-filter-btn" data-mode="learn">📚 Aprender</button>
+                                </div>
+                                
+                                <div class="composition-scroll" id="compositionScroll">
+                                    ${COMPOSITIONS.map(comp => `
+                                        <div class="comp-chip ${comp.id === currentComposition.id ? 'active' : ''}" data-id="${comp.id}">
+                                            ${comp.label}
+                                            <span class="pos-indicator">${comp.id === currentComposition.id ? `📍 ${getCurrentPosition()}` : ''}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                
+                                <div class="action-buttons">
+                                    <button class="action-btn" id="flipBtn">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M4 8v-2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/>
+                                            <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+                                            <path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/>
+                                        </svg>
+                                    </button>
+                                    <button class="shutter-btn" id="shutterBtn">
+                                        <div class="record-dot"></div>
+                                    </button>
+                                    <button class="action-btn" id="zoomBtn">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="11" cy="11" r="8"/>
+                                            <path d="m21 21-4.35-4.35"/>
+                                            <path d="M11 8v6"/>
+                                            <path d="M8 11h6"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                videoElement = document.getElementById('video');
+                
+                // Eventos
+                document.getElementById('flipBtn').addEventListener('click', () => {
+                    if (availableCameras.length > 1) {
+                        const next = (currentCameraIndex + 1) % availableCameras.length;
+                        switchCamera(next);
+                    } else {
+                        facingMode = facingMode === 'environment' ? 'user' : 'environment';
+                        if (stream) stream.getTracks().forEach(t => t.stop());
+                        startCamera();
+                    }
+                });
+
+                document.getElementById('shutterBtn').addEventListener('click', handleShutter);
+                document.getElementById('zoomBtn').addEventListener('click', () => {
+                    zoomLevel = Math.min(zoomLevel + 0.1, 3);
+                    if (videoElement) {
+                        videoElement.style.transform = `scale(${zoomLevel})`;
+                    }
+                });
+
+                // Eventos para as guias
+                document.querySelectorAll('.comp-chip').forEach(chip => {
+                    chip.addEventListener('click', function() {
+                        const id = this.dataset.id;
+                        const comp = COMPOSITIONS.find(c => c.id === id);
+                        if (comp) {
+                            currentComposition = comp;
+                            currentPositionIndex = 0;
+                            renderGuideOverlay(comp, getCurrentPosition());
+                            updateChips();
+                            updateLabel();
+                            this.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                            document.getElementById('suggestion').textContent = `📍 ${comp.label} - Toque novamente para mudar posição`;
+                        }
+                    });
+                    
+                    // Duplo clique/tap para mudar posição
+                    chip.addEventListener('dblclick', function(e) {
+                        e.stopPropagation();
+                        nextPosition();
+                        document.getElementById('suggestion').textContent = `📍 Posição: ${getCurrentPosition()}`;
+                    });
+                });
+
+                // Eventos para os modos
+                document.querySelectorAll('.mode-filter-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        document.querySelectorAll('.mode-filter-btn').forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                        const mode = this.dataset.mode;
+                        const shutter = document.getElementById('shutterBtn');
+                        if (mode === 'video') {
+                            shutter.classList.add('recording');
+                            document.getElementById('suggestion').textContent = '🎥 Toque no botão vermelho para gravar';
+                        } else if (mode === 'learn') {
+                            shutter.classList.remove('recording');
+                            document.getElementById('suggestion').textContent = `📚 ${currentComposition.label} - Toque na composição para alternar posição`;
+                        } else {
+                            shutter.classList.remove('recording');
+                            document.getElementById('suggestion').textContent = '📸 Toque no botão para capturar';
+                        }
+                    });
+                });
+
+                detectCameras().then(() => {
+                    startCamera();
+                });
+                renderGuideOverlay(currentComposition, getCurrentPosition());
+                updateLabel();
+            };
+
+            // Detectar câmeras
             const detectCameras = async () => {
                 try {
                     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -911,7 +1225,6 @@
                 if (!availableCameras[index]) return;
                 currentCameraIndex = index;
                 const deviceId = availableCameras[index].deviceId;
-                // Reiniciar com a nova câmera
                 if (stream) {
                     stream.getTracks().forEach(t => t.stop());
                 }
@@ -921,138 +1234,12 @@
                 });
             };
 
-            // Criar app
-            const createApp = () => {
-                root.innerHTML = `
-                    <div class="camera-container" id="app">
-                        <div class="video-wrapper">
-                            <video id="video" autoplay playsinline muted></video>
-                            <div class="overlay-grid" id="overlayGrid"></div>
-                            <div class="guide-label" id="guideLabel">${currentGuide}</div>
-                            <div class="timer-badge" id="timerBadge">00:00</div>
-                            
-                            <div class="camera-selector" id="cameraSelector"></div>
-                            
-                            <div class="score-panel">
-                                <div class="score-item"><span>Composição</span><span class="score-value" id="compScore">78%</span></div>
-                                <div class="score-item"><span>Iluminação</span><span class="score-value" id="lightScore">65%</span></div>
-                                <div class="score-item"><span>Enquadramento</span><span class="score-value" id="frameScore">72%</span></div>
-                                <div class="score-item" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:3px;margin-top:1px">
-                                    <span>Geral</span>
-                                    <span class="score-value" style="color:#fbbf24" id="overallScore">72</span>
-                                </div>
-                            </div>
-
-                            <div class="ai-suggestion" id="suggestion">📸 Aponte para um objeto principal</div>
-
-                            <div class="bottom-controls">
-                                <div class="mode-filters">
-                                    <button class="mode-filter-btn active" data-mode="camera">📷 Foto</button>
-                                    <button class="mode-filter-btn" data-mode="video">🎥 Vídeo</button>
-                                    <button class="mode-filter-btn" data-mode="learn">📚 Aprender</button>
-                                </div>
-                                
-                                <div class="composition-scroll" id="compositionScroll">
-                                    ${COMPOSITION_RULES.map(rule => `
-                                        <div class="comp-chip ${rule === currentGuide ? 'active' : ''}" data-guide="${rule}">
-                                            ${rule}
-                                        </div>
-                                    `).join('')}
-                                </div>
-                                
-                                <div class="action-buttons">
-                                    <button class="action-btn" id="flipBtn">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M4 8v-2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/>
-                                            <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
-                                            <path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/>
-                                        </svg>
-                                    </button>
-                                    <button class="shutter-btn" id="shutterBtn">
-                                        <div class="record-dot"></div>
-                                    </button>
-                                    <button class="action-btn" id="zoomBtn">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <circle cx="11" cy="11" r="8"/>
-                                            <path d="m21 21-4.35-4.35"/>
-                                            <path d="M11 8v6"/>
-                                            <path d="M8 11h6"/>
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                videoElement = document.getElementById('video');
-                
-                // Eventos
-                document.getElementById('flipBtn').addEventListener('click', () => {
-                    // Alternar para próxima câmera disponível
-                    if (availableCameras.length > 1) {
-                        const next = (currentCameraIndex + 1) % availableCameras.length;
-                        switchCamera(next);
-                    } else {
-                        // Fallback: alternar entre front/back
-                        currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
-                        if (stream) stream.getTracks().forEach(t => t.stop());
-                        startCamera();
-                    }
-                });
-
-                document.getElementById('shutterBtn').addEventListener('click', handleShutter);
-                document.getElementById('zoomBtn').addEventListener('click', () => {
-                    zoomLevel = Math.min(zoomLevel + 0.1, 3);
-                    if (videoElement) {
-                        videoElement.style.transform = `scale(${zoomLevel})`;
-                    }
-                });
-
-                // Eventos para as guias
-                document.querySelectorAll('.comp-chip').forEach(chip => {
-                    chip.addEventListener('click', function() {
-                        document.querySelectorAll('.comp-chip').forEach(c => c.classList.remove('active'));
-                        this.classList.add('active');
-                        currentGuide = this.dataset.guide;
-                        renderGuideOverlay(currentGuide);
-                        this.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                    });
-                });
-
-                // Eventos para os modos
-                document.querySelectorAll('.mode-filter-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        document.querySelectorAll('.mode-filter-btn').forEach(b => b.classList.remove('active'));
-                        this.classList.add('active');
-                        const mode = this.dataset.mode;
-                        const shutter = document.getElementById('shutterBtn');
-                        if (mode === 'video') {
-                            shutter.classList.add('recording');
-                            document.getElementById('suggestion').textContent = '🎥 Toque no botão vermelho para gravar';
-                        } else if (mode === 'learn') {
-                            shutter.classList.remove('recording');
-                            document.getElementById('suggestion').textContent = '📚 Toque em uma regra para aprender mais';
-                        } else {
-                            shutter.classList.remove('recording');
-                            document.getElementById('suggestion').textContent = '📸 Toque no botão para capturar';
-                        }
-                    });
-                });
-
-                // Detectar câmeras e iniciar
-                detectCameras().then(() => {
-                    startCamera();
-                });
-                renderGuideOverlay(currentGuide);
-            };
-
             // Iniciar câmera
             const startCamera = async (deviceId = null) => {
                 try {
                     const constraints = {
                         video: {
-                            facingMode: deviceId ? undefined : currentFacingMode,
+                            facingMode: deviceId ? undefined : facingMode,
                             deviceId: deviceId ? { exact: deviceId } : undefined,
                             width: { ideal: 1280 },
                             height: { ideal: 720 }
@@ -1101,7 +1288,7 @@
                 } else if (mode === 'camera') {
                     capturePhoto();
                 } else {
-                    document.getElementById('suggestion').textContent = `📚 "${currentGuide}" - Regra de composição para criar imagens equilibradas.`;
+                    document.getElementById('suggestion').textContent = `📚 "${currentComposition.label}" - Posição: ${getCurrentPosition()}`;
                 }
             };
 
@@ -1137,7 +1324,7 @@
                 document.getElementById('lightScore').textContent = lightScore + '%';
                 document.getElementById('frameScore').textContent = frameScore + '%';
                 document.getElementById('overallScore').textContent = Math.floor((compScore + lightScore + frameScore) / 3);
-                document.getElementById('suggestion').textContent = `📸 ${currentGuide} aplicada!`;
+                document.getElementById('suggestion').textContent = `📸 ${currentComposition.label} - Posição: ${getCurrentPosition()}`;
             };
 
             // Gravação
@@ -1234,16 +1421,29 @@
             // Sugestões IA
             setInterval(() => {
                 const el = document.getElementById('suggestion');
-                if (el && !el.textContent.includes('📚') && !el.textContent.includes('✅') && !el.textContent.includes('🔴') && !el.textContent.includes('🎥')) {
+                if (el && !el.textContent.includes('📚') && !el.textContent.includes('✅') && !el.textContent.includes('🔴') && !el.textContent.includes('🎥') && !el.textContent.includes('📍')) {
                     const actions = [
                         'Mova para esquerda', 'Mova para direita', 'Aproxime', 'Afaste',
                         'Suba a câmera', 'Abaixe a câmera', 'Gire levemente',
                         'Alinhe ao horizonte', 'Posicione no ponto ideal',
-                        `Aplique ${currentGuide}`
+                        `Aplique ${currentComposition.label}`
                     ];
                     el.textContent = actions[Math.floor(Math.random() * actions.length)];
                 }
             }, 5000);
+
+            // Adicionar evento de clique na tela para mudar posição (exceto em botões)
+            document.addEventListener('click', function(e) {
+                const target = e.target;
+                if (target.closest('.comp-chip') || target.closest('.action-btn') || 
+                    target.closest('.mode-filter-btn') || target.closest('.cam-btn') ||
+                    target.closest('.shutter-btn')) {
+                    return;
+                }
+                // Clique na tela muda a posição da composição atual
+                nextPosition();
+                document.getElementById('suggestion').textContent = `📍 ${currentComposition.label} - Posição: ${getCurrentPosition()}`;
+            });
 
         })();
     </script>
