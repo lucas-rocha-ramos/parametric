@@ -102,7 +102,6 @@
             margin-top: 1px;
         }
         
-        /* Indicador de foco */
         .focus-indicator {
             position: absolute;
             width: 60px;
@@ -144,7 +143,6 @@
             display: block;
         }
         
-        /* Zoom slider */
         .zoom-slider {
             position: absolute;
             right: 16px;
@@ -340,14 +338,6 @@
             height: 20px;
             background: white;
         }
-        .shutter-btn .shutter-icon {
-            font-size: 28px;
-            line-height: 1;
-            display: none;
-        }
-        .shutter-btn.recording .shutter-icon {
-            display: none;
-        }
         
         .score-panel {
             position: absolute;
@@ -538,7 +528,6 @@
             transform: scale(0.92);
         }
         
-        /* Modo retrato overlay */
         .portrait-overlay {
             position: absolute;
             top: 0;
@@ -572,7 +561,6 @@
             border-radius: 20px;
         }
         
-        /* Cinema mode overlay */
         .cinema-overlay {
             position: absolute;
             top: 0;
@@ -723,7 +711,7 @@
             let videoElement = null;
             let zoomLevel = 1;
             let minZoom = 1;
-            let maxZoom = 10;
+            let maxZoom = 5;
             let isRecording = false;
             let mediaRecorder = null;
             let recordedChunks = [];
@@ -731,12 +719,12 @@
             let seconds = 0;
             let availableCameras = [];
             let currentCameraIndex = 0;
-            let currentMode = 'camera'; // camera, video, portrait, cinema
+            let currentMode = 'camera';
             let exposureValue = 0;
             let focusPoint = { x: 0.5, y: 0.5 };
             let isZoomActive = false;
-            let zoomTouchStart = 0;
             let currentZoom = 1;
+            let cameraStarted = false;
 
             // Elementos
             let focusIndicator = null;
@@ -773,12 +761,15 @@
             const updateLabel = () => {
                 const label = document.getElementById('guideLabel');
                 const pos = getCurrentPosition();
-                label.innerHTML = `${currentComposition.label} <span class="position-indicator">📍 ${pos}</span>`;
+                if (label) {
+                    label.innerHTML = `${currentComposition.label} <span class="position-indicator">📍 ${pos}</span>`;
+                }
             };
 
-            // Renderizar overlay (versão simplificada das 15 composições)
+            // Renderizar overlay
             const renderGuideOverlay = (comp, position) => {
                 const grid = document.getElementById('overlayGrid');
+                if (!grid) return;
                 grid.innerHTML = '';
                 updateLabel();
 
@@ -788,7 +779,6 @@
                 const id = comp.id;
                 const isInverted = position === 'invertido' || position === 'refletido' || position === 'inferior';
 
-                // Versão simplificada para todas as composições
                 switch(id) {
                     case 'rule-of-thirds': {
                         const lines = [
@@ -913,7 +903,6 @@
                         break;
                     }
                     default: {
-                        // Para outras composições, mostrar grade básica
                         const div1 = document.createElement('div');
                         div1.className = 'grid-line';
                         div1.style.cssText = 'left:33.33%;top:0;width:1px;height:100%;opacity:0.3;';
@@ -966,12 +955,12 @@
                             <div class="camera-selector" id="cameraSelector"></div>
                             
                             <div class="score-panel">
-                                <div class="score-item"><span>Composição</span><span class="score-value" id="compScore">78%</span></div>
-                                <div class="score-item"><span>Iluminação</span><span class="score-value" id="lightScore">65%</span></div>
-                                <div class="score-item"><span>Enquadramento</span><span class="score-value" id="frameScore">72%</span></div>
+                                <div class="score-item"><span>Composição</span><span class="score-value" id="compScore">--</span></div>
+                                <div class="score-item"><span>Iluminação</span><span class="score-value" id="lightScore">--</span></div>
+                                <div class="score-item"><span>Enquadramento</span><span class="score-value" id="frameScore">--</span></div>
                                 <div class="score-item" style="border-top:1px solid rgba(255,255,255,0.06);padding-top:2px;margin-top:1px">
                                     <span>Geral</span>
-                                    <span class="score-value" style="color:#fbbf24" id="overallScore">72</span>
+                                    <span class="score-value" style="color:#fbbf24" id="overallScore">--</span>
                                 </div>
                             </div>
 
@@ -1020,30 +1009,27 @@
                 portraitOverlay = document.getElementById('portraitOverlay');
                 cinemaOverlay = document.getElementById('cinemaOverlay');
 
-                // Eventos
-                setupCameraEvents();
-                setupFocusEvents();
-                setupZoomEvents();
-                setupModeEvents();
-                setupCompositionEvents();
-                setupActionEvents();
-
+                // Inicializar eventos
+                setupEvents();
+                
+                // Detectar câmeras e iniciar
                 detectCameras().then(() => {
                     startCamera();
                 });
+                
                 renderGuideOverlay(currentComposition, getCurrentPosition());
                 updateLabel();
             };
 
-            // Configurar eventos da câmera
-            const setupCameraEvents = () => {
+            // Configurar eventos
+            const setupEvents = () => {
                 const wrapper = document.getElementById('videoWrapper');
                 
                 // Toque para focar
                 wrapper.addEventListener('click', function(e) {
                     if (e.target.closest('.action-btn') || e.target.closest('.shutter-btn') || 
                         e.target.closest('.mode-filter-btn') || e.target.closest('.comp-chip') ||
-                        e.target.closest('.cam-btn')) {
+                        e.target.closest('.cam-btn') || e.target.closest('.zoom-slider')) {
                         return;
                     }
                     const rect = this.getBoundingClientRect();
@@ -1075,7 +1061,7 @@
                         const t1 = e.touches[0];
                         const t2 = e.touches[1];
                         const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-                        const delta = (dist - lastTouchDist) / 100;
+                        const delta = (dist - lastTouchDist) / 200;
                         const newZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom + delta));
                         setZoom(newZoom);
                         lastTouchDist = dist;
@@ -1088,108 +1074,55 @@
                         setTimeout(() => zoomSlider.classList.remove('active'), 2000);
                     }
                 }, { passive: true });
-            };
 
-            // Configurar foco
-            const setFocus = (x, y) => {
-                focusPoint = { x, y };
-                focusIndicator.style.left = (x * 100) + '%';
-                focusIndicator.style.top = (y * 100) + '%';
-                focusIndicator.classList.remove('active');
-                // Forçar reflow
-                void focusIndicator.offsetWidth;
-                focusIndicator.classList.add('active');
-                setTimeout(() => focusIndicator.classList.remove('active'), 800);
-                
-                // Tentar aplicar foco no stream
-                try {
-                    if (stream && stream.getVideoTracks().length > 0) {
-                        const track = stream.getVideoTracks()[0];
-                        if (track.getCapabilities && track.getCapabilities().focusDistance) {
-                            // Aplicar foco (simulação)
-                            document.getElementById('suggestion').textContent = `🎯 Foco em ${Math.round(x*100)}%, ${Math.round(y*100)}%`;
+                // Botão flip
+                document.getElementById('flipBtn').addEventListener('click', () => {
+                    if (availableCameras.length > 1) {
+                        const next = (currentCameraIndex + 1) % availableCameras.length;
+                        switchCamera(next);
+                    } else {
+                        facingMode = facingMode === 'environment' ? 'user' : 'environment';
+                        if (stream) {
+                            stream.getTracks().forEach(t => t.stop());
                         }
+                        startCamera();
                     }
-                } catch(e) {}
-            };
+                });
 
-            // Ajustar exposição
-            const adjustExposure = (delta) => {
-                exposureValue = Math.max(-2, Math.min(2, exposureValue + delta));
-                exposureIndicator.textContent = `☀️ EV ${exposureValue.toFixed(1)}`;
-                exposureIndicator.classList.add('active');
-                document.getElementById('suggestion').textContent = `☀️ Exposição ${exposureValue > 0 ? '+' : ''}${exposureValue.toFixed(1)} EV`;
-                setTimeout(() => exposureIndicator.classList.remove('active'), 2000);
-            };
-
-            // Zoom
-            const setZoom = (value) => {
-                currentZoom = Math.max(minZoom, Math.min(maxZoom, value));
-                if (videoElement) {
-                    videoElement.style.transform = `scale(${currentZoom})`;
-                }
-                const pct = ((currentZoom - minZoom) / (maxZoom - minZoom)) * 100;
-                const thumb = document.getElementById('zoomThumb');
-                if (thumb) thumb.style.top = (100 - pct) + '%';
-                document.getElementById('suggestion').textContent = `🔍 Zoom ${currentZoom.toFixed(1)}x`;
-            };
-
-            // Configurar eventos de zoom
-            const setupZoomEvents = () => {
-                const slider = document.getElementById('zoomSlider');
-                const thumb = document.getElementById('zoomThumb');
+                // Botão shutter
+                document.getElementById('shutterBtn').addEventListener('click', handleShutter);
                 
-                slider.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    const touch = e.touches[0];
-                    const rect = this.getBoundingClientRect();
-                    const y = (touch.clientY - rect.top) / rect.height;
-                    const zoomVal = minZoom + (1 - y) * (maxZoom - minZoom);
-                    setZoom(zoomVal);
-                }, { passive: false });
+                // Botão exposição
+                document.getElementById('exposureBtn').addEventListener('click', () => {
+                    adjustExposure(0.3);
+                });
 
-                slider.addEventListener('touchmove', function(e) {
-                    e.preventDefault();
-                    const touch = e.touches[0];
-                    const rect = this.getBoundingClientRect();
-                    const y = (touch.clientY - rect.top) / rect.height;
-                    const zoomVal = minZoom + (1 - Math.max(0, Math.min(1, y))) * (maxZoom - minZoom);
-                    setZoom(zoomVal);
-                }, { passive: false });
-            };
-
-            // Configurar modos
-            const setupModeEvents = () => {
+                // Modos
                 document.querySelectorAll('.mode-filter-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
                         document.querySelectorAll('.mode-filter-btn').forEach(b => b.classList.remove('active'));
                         this.classList.add('active');
                         currentMode = this.dataset.mode;
                         
-                        // Atualizar UI conforme modo
                         portraitOverlay.classList.toggle('active', currentMode === 'portrait');
                         cinemaOverlay.classList.toggle('active', currentMode === 'cinema');
                         
                         const shutter = document.getElementById('shutterBtn');
-                        if (currentMode === 'video') {
+                        if (currentMode === 'video' || currentMode === 'cinema') {
                             shutter.classList.add('recording');
-                            document.getElementById('suggestion').textContent = '🎥 Toque no botão vermelho para gravar';
+                            document.getElementById('suggestion').textContent = currentMode === 'cinema' ? '🎬 Modo Cinema - Toque para gravar' : '🎥 Toque no botão vermelho para gravar';
                         } else {
                             shutter.classList.remove('recording');
                             if (currentMode === 'portrait') {
                                 document.getElementById('suggestion').textContent = '👤 Modo Retrato - Efeito de profundidade';
-                            } else if (currentMode === 'cinema') {
-                                document.getElementById('suggestion').textContent = '🎬 Modo Cinema - Vídeo com profundidade';
                             } else {
                                 document.getElementById('suggestion').textContent = '📸 Toque no botão para capturar';
                             }
                         }
                     });
                 });
-            };
 
-            // Configurar eventos das composições
-            const setupCompositionEvents = () => {
+                // Composições
                 document.querySelectorAll('.comp-chip').forEach(chip => {
                     chip.addEventListener('click', function() {
                         const id = this.dataset.id;
@@ -1211,32 +1144,65 @@
                     const target = e.target;
                     if (target.closest('.comp-chip') || target.closest('.action-btn') || 
                         target.closest('.mode-filter-btn') || target.closest('.cam-btn') ||
-                        target.closest('.shutter-btn') || target.closest('.zoom-slider')) {
+                        target.closest('.shutter-btn') || target.closest('.zoom-slider') ||
+                        target.closest('.photo-preview')) {
                         return;
                     }
-                    nextPosition();
-                    document.getElementById('suggestion').textContent = `📍 ${currentComposition.label} - Posição: ${getCurrentPosition()}`;
-                });
-            };
-
-            // Configurar ações
-            const setupActionEvents = () => {
-                document.getElementById('flipBtn').addEventListener('click', () => {
-                    if (availableCameras.length > 1) {
-                        const next = (currentCameraIndex + 1) % availableCameras.length;
-                        switchCamera(next);
-                    } else {
-                        facingMode = facingMode === 'environment' ? 'user' : 'environment';
-                        if (stream) stream.getTracks().forEach(t => t.stop());
-                        startCamera();
+                    if (currentMode !== 'video' && currentMode !== 'cinema') {
+                        nextPosition();
+                        document.getElementById('suggestion').textContent = `📍 ${currentComposition.label} - Posição: ${getCurrentPosition()}`;
                     }
                 });
 
-                document.getElementById('shutterBtn').addEventListener('click', handleShutter);
-                
-                document.getElementById('exposureBtn').addEventListener('click', () => {
-                    adjustExposure(0.3);
-                });
+                // Slider de zoom
+                const slider = document.getElementById('zoomSlider');
+                slider.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const rect = this.getBoundingClientRect();
+                    const y = (touch.clientY - rect.top) / rect.height;
+                    const zoomVal = minZoom + (1 - y) * (maxZoom - minZoom);
+                    setZoom(zoomVal);
+                }, { passive: false });
+
+                slider.addEventListener('touchmove', function(e) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const rect = this.getBoundingClientRect();
+                    const y = (touch.clientY - rect.top) / rect.height;
+                    const zoomVal = minZoom + (1 - Math.max(0, Math.min(1, y))) * (maxZoom - minZoom);
+                    setZoom(zoomVal);
+                }, { passive: false });
+            };
+
+            const setFocus = (x, y) => {
+                focusPoint = { x, y };
+                focusIndicator.style.left = (x * 100) + '%';
+                focusIndicator.style.top = (y * 100) + '%';
+                focusIndicator.classList.remove('active');
+                void focusIndicator.offsetWidth;
+                focusIndicator.classList.add('active');
+                setTimeout(() => focusIndicator.classList.remove('active'), 800);
+                document.getElementById('suggestion').textContent = `🎯 Foco em ${Math.round(x*100)}%, ${Math.round(y*100)}%`;
+            };
+
+            const adjustExposure = (delta) => {
+                exposureValue = Math.max(-2, Math.min(2, exposureValue + delta));
+                exposureIndicator.textContent = `☀️ EV ${exposureValue.toFixed(1)}`;
+                exposureIndicator.classList.add('active');
+                document.getElementById('suggestion').textContent = `☀️ Exposição ${exposureValue > 0 ? '+' : ''}${exposureValue.toFixed(1)} EV`;
+                setTimeout(() => exposureIndicator.classList.remove('active'), 2000);
+            };
+
+            const setZoom = (value) => {
+                currentZoom = Math.max(minZoom, Math.min(maxZoom, value));
+                if (videoElement) {
+                    videoElement.style.transform = `scale(${currentZoom})`;
+                }
+                const pct = ((currentZoom - minZoom) / (maxZoom - minZoom)) * 100;
+                const thumb = document.getElementById('zoomThumb');
+                if (thumb) thumb.style.top = (100 - pct) + '%';
+                document.getElementById('suggestion').textContent = `🔍 Zoom ${currentZoom.toFixed(1)}x`;
             };
 
             // Detectar câmeras
@@ -1276,6 +1242,7 @@
                 const deviceId = availableCameras[index].deviceId;
                 if (stream) {
                     stream.getTracks().forEach(t => t.stop());
+                    stream = null;
                 }
                 await startCamera(deviceId);
                 document.querySelectorAll('.cam-btn').forEach((btn, i) => {
@@ -1286,83 +1253,111 @@
             // Iniciar câmera
             const startCamera = async (deviceId = null) => {
                 try {
+                    // Verificar permissões primeiro
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        throw new Error('Navegador não suporta câmera');
+                    }
+
                     const constraints = {
                         video: {
                             facingMode: deviceId ? undefined : facingMode,
                             deviceId: deviceId ? { exact: deviceId } : undefined,
-                            width: { ideal: 1920 },
-                            height: { ideal: 1080 }
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
                         },
-                        audio: true
+                        audio: false
                     };
 
+                    // Se não houver deviceId, tentar com facingMode
+                    if (!deviceId) {
+                        delete constraints.video.deviceId;
+                    }
+
+                    console.log('Tentando iniciar câmera com:', constraints);
                     stream = await navigator.mediaDevices.getUserMedia(constraints);
                     
                     if (videoElement) {
                         videoElement.srcObject = stream;
                         await videoElement.play();
                         isCameraReady = true;
-                        console.log('✅ Câmera iniciada!');
+                        cameraStarted = true;
+                        document.getElementById('suggestion').textContent = '📸 Câmera pronta! Toque na tela para focar';
+                        console.log('✅ Câmera iniciada com sucesso!');
                     }
                 } catch (error) {
-                    console.error('❌ Erro:', error);
-                    showPermissionError(error.message);
+                    console.error('❌ Erro ao iniciar câmera:', error);
+                    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                        showPermissionError('Permissão negada. Permita o acesso à câmera nas configurações do Safari.');
+                    } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                        showPermissionError('Nenhuma câmera encontrada no dispositivo.');
+                    } else {
+                        showPermissionError(error.message || 'Erro ao acessar a câmera.');
+                    }
                 }
             };
 
             const showPermissionError = (msg) => {
-                const overlay = document.createElement('div');
-                overlay.className = 'permission-overlay';
-                overlay.innerHTML = `
+                const overlay = document.querySelector('.permission-overlay');
+                if (overlay) {
+                    overlay.querySelector('.error-msg').textContent = msg;
+                    return;
+                }
+                
+                const overlayDiv = document.createElement('div');
+                overlayDiv.className = 'permission-overlay';
+                overlayDiv.innerHTML = `
                     <h2>📷 Acesso à Câmera</h2>
                     <p>O Photo Composition AI precisa acessar sua câmera para funcionar.</p>
-                    <button class="permission-btn" id="retryBtn">Permitir Acesso</button>
-                    <div class="error-msg">${msg || 'Toque no botão acima e permita o acesso no Safari'}</div>
+                    <button class="permission-btn" id="retryBtn">🔄 Tentar Novamente</button>
+                    <div class="error-msg">${msg}</div>
                 `;
-                document.querySelector('.video-wrapper').appendChild(overlay);
+                document.querySelector('.video-wrapper').appendChild(overlayDiv);
+                
                 document.getElementById('retryBtn').addEventListener('click', () => {
-                    overlay.remove();
+                    overlayDiv.remove();
                     startCamera();
                 });
             };
 
             // Manipular shutter
             const handleShutter = () => {
+                if (!isCameraReady || !stream) {
+                    document.getElementById('suggestion').textContent = '⏳ Aguarde a câmera iniciar';
+                    return;
+                }
+                
                 if (currentMode === 'video') {
-                    toggleRecording();
-                } else if (currentMode === 'portrait') {
-                    capturePhoto(true);
+                    toggleRecording(false);
                 } else if (currentMode === 'cinema') {
                     toggleRecording(true);
+                } else if (currentMode === 'portrait') {
+                    capturePhoto(true);
                 } else {
                     capturePhoto(false);
                 }
             };
 
-            // Capturar foto (com suporte a RAW)
+            // Capturar foto
             const capturePhoto = (portrait = false) => {
                 if (!videoElement || !isCameraReady) {
-                    alert('Aguarde a câmera iniciar');
+                    document.getElementById('suggestion').textContent = '⏳ Aguarde a câmera iniciar';
                     return;
                 }
                 
                 const canvas = document.createElement('canvas');
-                const width = videoElement.videoWidth || 1920;
-                const height = videoElement.videoHeight || 1080;
+                const width = videoElement.videoWidth || 1280;
+                const height = videoElement.videoHeight || 720;
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(videoElement, 0, 0, width, height);
                 
-                // Simular RAW: salvar também como DNG (na prática, salvamos como JPEG de alta qualidade)
-                const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+                let dataUrl = canvas.toDataURL('image/jpeg', 1.0);
                 
-                // Se for modo retrato, adicionar efeito bokeh (simulação)
                 if (portrait) {
-                    // Aplicar efeito de desfoque nas bordas
+                    // Efeito bokeh simulado
                     const imageData = ctx.getImageData(0, 0, width, height);
                     const data = imageData.data;
-                    // Simular desfoque radial (bokeh)
                     const centerX = width / 2;
                     const centerY = height / 2;
                     const radius = Math.min(width, height) * 0.35;
@@ -1371,21 +1366,21 @@
                             const dist = Math.hypot(x - centerX, y - centerY);
                             if (dist > radius) {
                                 const idx = (y * width + x) * 4;
-                                const blur = Math.min(1, (dist - radius) / radius);
-                                data[idx] = data[idx] * (1 - blur * 0.7);
-                                data[idx+1] = data[idx+1] * (1 - blur * 0.7);
-                                data[idx+2] = data[idx+2] * (1 - blur * 0.7);
+                                const blur = Math.min(0.7, (dist - radius) / radius * 0.6);
+                                data[idx] = data[idx] * (1 - blur);
+                                data[idx+1] = data[idx+1] * (1 - blur);
+                                data[idx+2] = data[idx+2] * (1 - blur);
                             }
                         }
                     }
                     ctx.putImageData(imageData, 0, 0);
-                    const portraitUrl = canvas.toDataURL('image/jpeg', 1.0);
-                    showPreview(portraitUrl, 'portrait');
+                    dataUrl = canvas.toDataURL('image/jpeg', 1.0);
                     document.getElementById('suggestion').textContent = '👤 Modo Retrato aplicado!';
                 } else {
-                    showPreview(dataUrl, 'photo');
                     document.getElementById('suggestion').textContent = `📸 ${currentComposition.label} aplicada!`;
                 }
+                
+                showPreview(dataUrl, portrait ? 'portrait' : 'photo');
                 
                 // Atualizar scores
                 const compScore = Math.floor(60 + Math.random() * 35);
@@ -1403,7 +1398,7 @@
                 preview.innerHTML = `
                     <img src="${url}" alt="Foto" />
                     <div style="color:#aaa;font-size:11px;margin-top:8px;">
-                        ${type === 'portrait' ? '👤 Modo Retrato' : '📷 RAW'} • ${currentComposition.label}
+                        ${type === 'portrait' ? '👤 Modo Retrato' : '📷 Foto'} • ${currentComposition.label}
                     </div>
                     <div class="photo-actions">
                         <button class="btn-close" onclick="this.closest('.photo-preview').remove()">Fechar</button>
@@ -1413,7 +1408,7 @@
                 document.body.appendChild(preview);
             };
 
-            // Gravação de vídeo (com suporte a modo cinema)
+            // Gravação de vídeo
             const toggleRecording = async (cinemaMode = false) => {
                 if (isRecording) {
                     if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -1432,8 +1427,17 @@
                     return;
                 }
 
-                if (!stream) return;
+                if (!stream) {
+                    document.getElementById('suggestion').textContent = '⏳ Aguarde a câmera iniciar';
+                    return;
+                }
+                
                 try {
+                    // Verificar se o navegador suporta MediaRecorder
+                    if (typeof MediaRecorder === 'undefined') {
+                        throw new Error('MediaRecorder não suportado neste navegador');
+                    }
+
                     const options = { mimeType: 'video/mp4' };
                     mediaRecorder = new MediaRecorder(stream, options);
                     recordedChunks = [];
@@ -1445,6 +1449,10 @@
                     };
 
                     mediaRecorder.onstop = () => {
+                        if (recordedChunks.length === 0) {
+                            document.getElementById('suggestion').textContent = '⚠️ Nenhum dado gravado';
+                            return;
+                        }
                         const blob = new Blob(recordedChunks, { type: 'video/mp4' });
                         const url = URL.createObjectURL(blob);
                         const preview = document.createElement('div');
@@ -1477,7 +1485,7 @@
                     document.getElementById('suggestion').textContent = cinemaMode ? '🎬 Gravando Cinema...' : '🔴 Gravando...';
                 } catch (err) {
                     console.error('Erro ao gravar:', err);
-                    alert('Erro ao gravar vídeo.');
+                    document.getElementById('suggestion').textContent = '⚠️ Erro ao gravar: ' + err.message;
                 }
             };
 
@@ -1495,7 +1503,7 @@
                     root.innerHTML = `
                         <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;padding:30px;text-align:center;background:#000;color:#fff;">
                             <h2 style="font-size:24px;margin-bottom:10px;">📱 Dispositivo não compatível</h2>
-                            <p style="color:#aaa;max-width:300px;">Seu navegador não suporta acesso à câmera.</p>
+                            <p style="color:#aaa;max-width:300px;">Seu navegador não suporta acesso à câmera. Use um dispositivo com câmera e Safari/Chrome atualizado.</p>
                         </div>
                     `;
                     return false;
@@ -1514,7 +1522,9 @@
                     !el.textContent.includes('🔴') && !el.textContent.includes('🎬') && 
                     !el.textContent.includes('📍') && !el.textContent.includes('🎯') &&
                     !el.textContent.includes('☀️') && !el.textContent.includes('🔍') &&
-                    !el.textContent.includes('👤') && !el.textContent.includes('📸')) {
+                    !el.textContent.includes('👤') && !el.textContent.includes('📸') &&
+                    !el.textContent.includes('⏳') && !el.textContent.includes('⚠️') &&
+                    isCameraReady) {
                     const actions = [
                         'Mova para esquerda', 'Mova para direita', 'Aproxime', 'Afaste',
                         'Suba a câmera', 'Abaixe a câmera', 'Gire levemente',
