@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Photo AI" />
     <link rel="manifest" href="/manifest.json" />
-    <title>Photo Composition AI - Profissional</title>
+    <title>Photo Composition AI</title>
     <style>
         * {
             margin: 0;
@@ -67,8 +67,23 @@
             pointer-events: none;
             z-index: 3;
             display: none;
+            image-rendering: auto;
         }
         #canvas-output.active {
+            display: block;
+        }
+        #canvas-lowres {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            display: none;
+            image-rendering: pixelated;
+        }
+        #canvas-lowres.active {
             display: block;
         }
         .overlay-grid {
@@ -112,8 +127,8 @@
         
         .focus-indicator {
             position: absolute;
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             border: 2px solid #fbbf24;
             border-radius: 50%;
             transform: translate(-50%, -50%);
@@ -121,80 +136,88 @@
             z-index: 10;
             opacity: 0;
             transition: opacity 0.3s;
-            background: rgba(251, 191, 36, 0.1);
+            background: rgba(251, 191, 36, 0.08);
         }
         .focus-indicator.active {
             opacity: 1;
-            animation: focusPulse 0.5s ease-out;
+            animation: focusPulse 0.4s ease-out;
         }
         @keyframes focusPulse {
-            0% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
-            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+            0% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
         }
         
         .aperture-control {
             position: absolute;
-            bottom: 200px;
-            right: 16px;
-            background: rgba(0,0,0,0.75);
+            bottom: 190px;
+            right: 12px;
+            background: rgba(0,0,0,0.8);
             backdrop-filter: blur(12px);
-            border-radius: 16px;
-            padding: 12px 14px;
-            border: 1px solid rgba(255,215,0,0.15);
+            border-radius: 14px;
+            padding: 10px 12px;
+            border: 1px solid rgba(255,215,0,0.12);
             z-index: 12;
-            min-width: 100px;
+            min-width: 80px;
             display: none;
         }
         .aperture-control.active {
             display: block;
         }
         .aperture-control .label {
-            font-size: 9px;
-            color: #aaa;
+            font-size: 8px;
+            color: #888;
             text-align: center;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
             letter-spacing: 0.5px;
         }
         .aperture-control .value {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             color: #fbbf24;
             text-align: center;
         }
         .aperture-control .sub {
-            font-size: 10px;
-            color: #888;
+            font-size: 8px;
+            color: #666;
             text-align: center;
         }
         .aperture-slider {
             width: 100%;
-            height: 4px;
+            height: 3px;
             -webkit-appearance: none;
             appearance: none;
-            background: rgba(255,215,0,0.2);
+            background: rgba(255,215,0,0.15);
             border-radius: 2px;
             outline: none;
-            margin-top: 8px;
+            margin-top: 6px;
         }
         .aperture-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
             background: #fbbf24;
             cursor: pointer;
-            border: 2px solid rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.15);
+        }
+        .aperture-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #fbbf24;
+            cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.15);
         }
         
         .zoom-slider {
             position: absolute;
-            right: 16px;
+            right: 12px;
             top: 50%;
             transform: translateY(-50%);
-            width: 4px;
-            height: 150px;
-            background: rgba(255,255,255,0.15);
+            width: 3px;
+            height: 120px;
+            background: rgba(255,255,255,0.1);
             border-radius: 2px;
             z-index: 15;
             display: none;
@@ -207,12 +230,12 @@
             position: absolute;
             left: 50%;
             transform: translateX(-50%);
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             background: #fbbf24;
             border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.3);
-            box-shadow: 0 0 20px rgba(251,191,36,0.3);
+            border: 2px solid rgba(255,255,255,0.2);
+            box-shadow: 0 0 15px rgba(251,191,36,0.2);
         }
         
         .bottom-controls {
@@ -221,7 +244,7 @@
             left: 0;
             width: 100%;
             background: linear-gradient(transparent, rgba(0,0,0,0.9) 30%);
-            padding: 12px 0 20px 0;
+            padding: 10px 0 16px 0;
             z-index: 20;
             pointer-events: none;
         }
@@ -232,18 +255,18 @@
         .mode-filters {
             display: flex;
             justify-content: center;
-            gap: 10px;
-            margin-bottom: 10px;
-            padding: 0 12px;
+            gap: 8px;
+            margin-bottom: 8px;
+            padding: 0 10px;
             flex-wrap: wrap;
         }
         .mode-filter-btn {
-            background: rgba(255,255,255,0.08);
-            border: 2px solid rgba(255,255,255,0.12);
-            color: #aaa;
-            padding: 4px 12px;
-            border-radius: 16px;
-            font-size: 9px;
+            background: rgba(255,255,255,0.06);
+            border: 2px solid rgba(255,255,255,0.08);
+            color: #999;
+            padding: 3px 10px;
+            border-radius: 14px;
+            font-size: 8px;
             font-weight: 600;
             transition: 0.2s;
             touch-action: manipulation;
@@ -262,23 +285,23 @@
         }
         .mode-filter-btn .badge {
             display: inline-block;
-            background: rgba(255,215,0,0.2);
+            background: rgba(255,215,0,0.15);
             padding: 0 4px;
-            border-radius: 4px;
-            font-size: 7px;
+            border-radius: 3px;
+            font-size: 6px;
             margin-left: 2px;
             color: #fbbf24;
         }
         .mode-filter-btn.active .badge {
-            background: rgba(0,0,0,0.2);
+            background: rgba(0,0,0,0.15);
             color: #000;
         }
         
         .composition-scroll {
             display: flex;
-            gap: 5px;
+            gap: 4px;
             overflow-x: auto;
-            padding: 0 10px 6px 10px;
+            padding: 0 8px 4px 8px;
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
@@ -288,13 +311,13 @@
         }
         .comp-chip {
             flex: 0 0 auto;
-            background: rgba(255,255,255,0.07);
+            background: rgba(255,255,255,0.05);
             backdrop-filter: blur(6px);
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 8px;
-            border: 1px solid rgba(255,255,255,0.06);
-            color: #bbb;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 7px;
+            border: 1px solid rgba(255,255,255,0.04);
+            color: #aaa;
             transition: 0.2s;
             touch-action: manipulation;
             cursor: pointer;
@@ -302,10 +325,10 @@
             white-space: nowrap;
             text-transform: uppercase;
             font-weight: 600;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.2px;
         }
         .comp-chip.active {
-            background: rgba(255, 215, 0, 0.15);
+            background: rgba(255, 215, 0, 0.12);
             border-color: #fbbf24;
             color: #fbbf24;
         }
@@ -314,10 +337,10 @@
         }
         .comp-chip .pos-indicator {
             display: block;
-            font-size: 6px;
-            color: rgba(255,215,0,0.4);
+            font-size: 5px;
+            color: rgba(255,215,0,0.3);
             text-align: center;
-            margin-top: 1px;
+            margin-top: 0px;
             font-weight: 400;
         }
         .comp-chip.active .pos-indicator {
@@ -328,19 +351,19 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 16px;
+            gap: 14px;
             padding: 0 16px;
             margin-top: 4px;
         }
         .action-btn {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.06);
             backdrop-filter: blur(8px);
-            border: 2px solid rgba(255, 255, 255, 0.12);
-            color: white;
-            font-size: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            color: #ccc;
+            font-size: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -351,19 +374,15 @@
         }
         .action-btn:active {
             transform: scale(0.88);
-            background: rgba(255,255,255,0.15);
-        }
-        .action-btn.active-mode {
-            border-color: #fbbf24;
-            color: #fbbf24;
+            background: rgba(255,255,255,0.12);
         }
         .shutter-btn {
-            width: 60px;
-            height: 60px;
+            width: 56px;
+            height: 56px;
             border-radius: 50%;
             background: white;
-            border: 4px solid rgba(255,255,255,0.35);
-            box-shadow: 0 0 25px rgba(255,255,255,0.08);
+            border: 4px solid rgba(255,255,255,0.25);
+            box-shadow: 0 0 20px rgba(255,255,255,0.05);
             touch-action: manipulation;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
@@ -380,42 +399,42 @@
         }
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.04); }
+            50% { transform: scale(1.03); }
         }
         .shutter-btn .record-dot {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             background: #ff3b30;
-            border-radius: 4px;
+            border-radius: 3px;
             margin: 0 auto;
             transition: 0.3s;
         }
         .shutter-btn.recording .record-dot {
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             background: white;
         }
         
         .score-panel {
             position: absolute;
-            top: 14px;
-            right: 10px;
+            top: 12px;
+            right: 8px;
             background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(12px);
-            border-radius: 12px;
-            padding: 6px 10px;
-            min-width: 70px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            padding: 4px 8px;
+            min-width: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
             z-index: 20;
             pointer-events: none;
         }
         .score-item {
             display: flex;
             justify-content: space-between;
-            font-size: 9px;
-            padding: 1px 0;
-            color: #ccc;
+            font-size: 8px;
+            padding: 0px 0;
+            color: #bbb;
         }
         .score-value {
             font-weight: 700;
@@ -423,16 +442,16 @@
         }
         .ai-suggestion {
             position: absolute;
-            bottom: 145px;
+            bottom: 135px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.75);
+            background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(8px);
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-size: 10px;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 9px;
             font-weight: 500;
-            border: 1px solid rgba(255, 215, 0, 0.2);
+            border: 1px solid rgba(255, 215, 0, 0.12);
             color: #fbbf24;
             white-space: nowrap;
             z-index: 15;
@@ -458,21 +477,21 @@
             text-align: center;
         }
         .permission-overlay h2 {
-            font-size: 20px;
-            margin-bottom: 8px;
+            font-size: 18px;
+            margin-bottom: 6px;
         }
         .permission-overlay p {
             color: #aaa;
-            font-size: 14px;
-            max-width: 280px;
-            margin-bottom: 16px;
+            font-size: 13px;
+            max-width: 260px;
+            margin-bottom: 14px;
         }
         .permission-btn {
             background: #fbbf24;
             border: none;
-            padding: 12px 32px;
-            border-radius: 25px;
-            font-size: 16px;
+            padding: 10px 28px;
+            border-radius: 22px;
+            font-size: 14px;
             font-weight: 600;
             color: #000;
             touch-action: manipulation;
@@ -484,8 +503,8 @@
         }
         .error-msg {
             color: #ff6b6b;
-            font-size: 12px;
-            margin-top: 8px;
+            font-size: 11px;
+            margin-top: 6px;
         }
         .photo-preview {
             position: fixed;
@@ -504,20 +523,20 @@
         }
         .photo-preview img, .photo-preview video {
             max-width: 100%;
-            max-height: 60%;
+            max-height: 55%;
             border-radius: 12px;
             object-fit: contain;
-            border: 1px solid rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.04);
         }
         .photo-actions {
-            margin-top: 16px;
+            margin-top: 14px;
             display: flex;
-            gap: 16px;
+            gap: 14px;
         }
         .photo-actions button {
-            padding: 10px 24px;
-            border-radius: 25px;
-            font-size: 14px;
+            padding: 8px 20px;
+            border-radius: 22px;
+            font-size: 13px;
             font-weight: 600;
             border: none;
             touch-action: manipulation;
@@ -537,13 +556,13 @@
         }
         .timer-badge {
             position: absolute;
-            top: 14px;
+            top: 12px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(255, 0, 0, 0.8);
-            padding: 2px 12px;
-            border-radius: 16px;
-            font-size: 12px;
+            padding: 2px 10px;
+            border-radius: 14px;
+            font-size: 11px;
             font-weight: 700;
             color: #fff;
             z-index: 30;
@@ -559,20 +578,20 @@
         }
         .camera-selector {
             position: absolute;
-            top: 14px;
-            left: 10px;
+            top: 12px;
+            left: 8px;
             z-index: 25;
             display: flex;
-            gap: 4px;
+            gap: 3px;
         }
         .cam-btn {
             background: rgba(0,0,0,0.5);
             backdrop-filter: blur(6px);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: #aaa;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 8px;
+            border: 1px solid rgba(255,255,255,0.06);
+            color: #888;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 7px;
             font-weight: 600;
             touch-action: manipulation;
             cursor: pointer;
@@ -593,12 +612,12 @@
             transform: translate(-50%, -50%);
             z-index: 8;
             color: #fbbf24;
-            font-size: 12px;
+            font-size: 10px;
             text-align: center;
             background: rgba(0,0,0,0.7);
-            padding: 12px 20px;
-            border-radius: 12px;
-            border: 1px solid rgba(255,215,0,0.15);
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,215,0,0.08);
             display: none;
         }
         .loading-indicator.active {
@@ -606,13 +625,13 @@
         }
         .loading-indicator .spinner {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255,215,0,0.2);
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,215,0,0.15);
             border-top: 2px solid #fbbf24;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            margin-right: 8px;
+            margin-right: 6px;
             vertical-align: middle;
         }
         @keyframes spin {
@@ -620,44 +639,57 @@
             100% { transform: rotate(360deg); }
         }
         
+        .fps-counter {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.15);
+            font-size: 8px;
+            z-index: 7;
+            font-family: monospace;
+            pointer-events: none;
+            display: none;
+        }
+        
         @media (max-width: 430px) {
             .score-panel {
-                padding: 4px 8px;
-                min-width: 55px;
+                padding: 3px 6px;
+                min-width: 50px;
                 top: 10px;
-                right: 8px;
+                right: 6px;
             }
             .score-item {
                 font-size: 7px;
-                padding: 0px 0;
+                padding: 0px;
             }
             .mode-filter-btn {
-                font-size: 8px;
-                padding: 3px 8px;
-            }
-            .mode-filters {
-                gap: 6px;
-            }
-            .comp-chip {
                 font-size: 7px;
                 padding: 2px 8px;
             }
+            .mode-filters {
+                gap: 5px;
+            }
+            .comp-chip {
+                font-size: 6px;
+                padding: 2px 6px;
+            }
             .comp-chip .pos-indicator {
-                font-size: 5px;
+                font-size: 4px;
             }
             .action-btn {
-                width: 36px;
-                height: 36px;
-                font-size: 13px;
+                width: 32px;
+                height: 32px;
+                font-size: 12px;
             }
             .shutter-btn {
-                width: 54px;
-                height: 54px;
+                width: 48px;
+                height: 48px;
             }
             .ai-suggestion {
-                font-size: 9px;
-                padding: 4px 10px;
-                bottom: 130px;
+                font-size: 8px;
+                padding: 3px 10px;
+                bottom: 120px;
                 max-width: 92%;
             }
             .guide-label {
@@ -669,33 +701,40 @@
                 font-size: 7px;
             }
             .bottom-controls {
-                padding: 8px 0 14px 0;
+                padding: 6px 0 12px 0;
             }
             .cam-btn {
-                font-size: 7px;
-                padding: 2px 6px;
+                font-size: 6px;
+                padding: 2px 5px;
             }
             .timer-badge {
-                font-size: 10px;
+                font-size: 9px;
                 padding: 2px 8px;
                 top: 10px;
             }
             .focus-indicator {
-                width: 40px;
-                height: 40px;
+                width: 35px;
+                height: 35px;
             }
             .zoom-slider {
-                height: 100px;
-                right: 10px;
+                height: 80px;
+                right: 8px;
             }
             .aperture-control {
-                bottom: 180px;
-                right: 10px;
-                padding: 8px 10px;
-                min-width: 70px;
+                bottom: 170px;
+                right: 8px;
+                padding: 6px 8px;
+                min-width: 60px;
             }
             .aperture-control .value {
-                font-size: 16px;
+                font-size: 14px;
+            }
+            .aperture-control .label {
+                font-size: 7px;
+            }
+            .aperture-slider::-webkit-slider-thumb {
+                width: 12px;
+                height: 12px;
             }
         }
     </style>
@@ -724,17 +763,17 @@
             { id: 'harmonic-armature', label: 'HARMONIC ARMATURE', positions: ['padrão', 'refletido'] }
         ];
 
-        // Valores de abertura (f-stop)
+        // Valores de abertura (f-stop) com raio de desfoque otimizado
         const APERTURE_VALUES = [
-            { label: 'f/1.4', value: 1.4, blur: 1.0 },
-            { label: 'f/2.0', value: 2.0, blur: 0.9 },
-            { label: 'f/2.8', value: 2.8, blur: 0.75 },
-            { label: 'f/4.0', value: 4.0, blur: 0.55 },
-            { label: 'f/5.6', value: 5.6, blur: 0.4 },
-            { label: 'f/8.0', value: 8.0, blur: 0.25 },
-            { label: 'f/11', value: 11, blur: 0.15 },
-            { label: 'f/16', value: 16, blur: 0.08 },
-            { label: 'f/22', value: 22, blur: 0.03 }
+            { label: 'f/1.4', value: 1.4, blur: 8 },
+            { label: 'f/2.0', value: 2.0, blur: 7 },
+            { label: 'f/2.8', value: 2.8, blur: 6 },
+            { label: 'f/4.0', value: 4.0, blur: 4 },
+            { label: 'f/5.6', value: 5.6, blur: 3 },
+            { label: 'f/8.0', value: 8.0, blur: 2 },
+            { label: 'f/11', value: 11, blur: 1 },
+            { label: 'f/16', value: 16, blur: 0.5 },
+            { label: 'f/22', value: 22, blur: 0 }
         ];
 
         (function() {
@@ -746,7 +785,9 @@
             let isCameraReady = false;
             let videoElement = null;
             let canvasOutput = null;
+            let canvasLowRes = null;
             let ctxOutput = null;
+            let ctxLowRes = null;
             let zoomLevel = 1;
             let currentZoom = 1;
             let isRecording = false;
@@ -757,7 +798,7 @@
             let availableCameras = [];
             let currentCameraIndex = 0;
             let currentMode = 'camera';
-            let currentApertureIndex = 2; // f/2.8 padrão
+            let currentApertureIndex = 2;
             let isApertureActive = false;
             let isSegmenting = false;
             let segmentationReady = false;
@@ -765,6 +806,12 @@
             let lastSegmentation = null;
             let animationFrame = null;
             let isProcessing = false;
+            let frameCount = 0;
+            let processEveryNFrames = 3;
+            let lowResWidth = 320;
+            let lowResHeight = 240;
+            let isLowResMode = true;
+            let blurCache = {};
 
             // Elementos
             let focusIndicator = null;
@@ -807,7 +854,7 @@
                 }
             };
 
-            // Renderizar overlay
+            // Renderizar overlay (simplificado)
             const renderGuideOverlay = (comp, position) => {
                 const grid = document.getElementById('overlayGrid');
                 if (!grid) return;
@@ -828,11 +875,8 @@
                             { top: '33.33%', left: '0', width: '100%', height: '1px' },
                             { top: '66.66%', left: '0', width: '100%', height: '1px' }
                         ];
-                        if (position === 'vertical') {
-                            lines.splice(2, 2);
-                        } else if (position === 'horizontal') {
-                            lines.splice(0, 2);
-                        }
+                        if (position === 'vertical') lines.splice(2, 2);
+                        else if (position === 'horizontal') lines.splice(0, 2);
                         lines.forEach(l => {
                             const div = document.createElement('div');
                             div.className = 'grid-line';
@@ -889,8 +933,8 @@
                         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                         path.setAttribute('d', `M${cx},${cy} Q${cx+10},${cy-10} ${cx+20},${cy} Q${cx+30},${cy+10} ${cx+20},${cy+20} Q${cx+10},${cy+30} ${cx},${cy+20} Q${cx-10},${cy+10} ${cx},${cy}`);
                         path.setAttribute('fill', 'none');
-                        path.setAttribute('stroke', 'rgba(255,215,0,0.5)');
-                        path.setAttribute('stroke-width', '1.5');
+                        path.setAttribute('stroke', 'rgba(255,215,0,0.4)');
+                        path.setAttribute('stroke-width', '1.2');
                         svg.appendChild(path);
                         container.appendChild(svg);
                         break;
@@ -907,8 +951,8 @@
                         const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
                         poly.setAttribute('points', points);
                         poly.setAttribute('fill', 'none');
-                        poly.setAttribute('stroke', 'rgba(255,215,0,0.4)');
-                        poly.setAttribute('stroke-width', '1.2');
+                        poly.setAttribute('stroke', 'rgba(255,215,0,0.35)');
+                        poly.setAttribute('stroke-width', '1');
                         svg.appendChild(poly);
                         container.appendChild(svg);
                         break;
@@ -930,15 +974,15 @@
                             line.setAttribute('y1', y1 + '%');
                             line.setAttribute('x2', x2 + '%');
                             line.setAttribute('y2', y2 + '%');
-                            line.setAttribute('stroke', 'rgba(255,215,0,0.2)');
-                            line.setAttribute('stroke-width', '0.8');
+                            line.setAttribute('stroke', 'rgba(255,215,0,0.15)');
+                            line.setAttribute('stroke-width', '0.6');
                             svg.appendChild(line);
                         });
                         const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                         dot.setAttribute('cx', vx + '%');
                         dot.setAttribute('cy', vy + '%');
-                        dot.setAttribute('r', '4');
-                        dot.setAttribute('fill', 'rgba(255,215,0,0.7)');
+                        dot.setAttribute('r', '3');
+                        dot.setAttribute('fill', 'rgba(255,215,0,0.6)');
                         svg.appendChild(dot);
                         container.appendChild(svg);
                         break;
@@ -946,19 +990,19 @@
                     default: {
                         const div1 = document.createElement('div');
                         div1.className = 'grid-line';
-                        div1.style.cssText = 'left:33.33%;top:0;width:1px;height:100%;opacity:0.3;';
+                        div1.style.cssText = 'left:33.33%;top:0;width:1px;height:100%;opacity:0.2;';
                         container.appendChild(div1);
                         const div2 = document.createElement('div');
                         div2.className = 'grid-line';
-                        div2.style.cssText = 'left:66.66%;top:0;width:1px;height:100%;opacity:0.3;';
+                        div2.style.cssText = 'left:66.66%;top:0;width:1px;height:100%;opacity:0.2;';
                         container.appendChild(div2);
                         const div3 = document.createElement('div');
                         div3.className = 'grid-line';
-                        div3.style.cssText = 'top:33.33%;left:0;width:100%;height:1px;opacity:0.3;';
+                        div3.style.cssText = 'top:33.33%;left:0;width:100%;height:1px;opacity:0.2;';
                         container.appendChild(div3);
                         const div4 = document.createElement('div');
                         div4.className = 'grid-line';
-                        div4.style.cssText = 'top:66.66%;left:0;width:100%;height:1px;opacity:0.3;';
+                        div4.style.cssText = 'top:66.66%;left:0;width:100%;height:1px;opacity:0.2;';
                         container.appendChild(div4);
                         break;
                     }
@@ -966,32 +1010,177 @@
                 grid.appendChild(container);
             };
 
-            // Carregar modelo BodyPix
+            // Desfoque otimizado (separável - horizontal + vertical)
+            const applyBlurOptimized = (imageData, width, height, radius, mask) => {
+                if (radius < 0.5) return imageData;
+                
+                const data = imageData.data;
+                const tempData = new Uint8ClampedArray(data);
+                const r = Math.round(radius);
+                if (r <= 0) return imageData;
+                
+                // Usar cache para o mesmo raio
+                const cacheKey = `${r}`;
+                if (!blurCache[cacheKey]) {
+                    // Gerar kernel gaussiano simplificado
+                    const kernel = [];
+                    let sum = 0;
+                    for (let i = -r; i <= r; i++) {
+                        const val = Math.exp(-(i * i) / (2 * r * r * 0.5));
+                        kernel.push(val);
+                        sum += val;
+                    }
+                    blurCache[cacheKey] = { kernel, sum, radius: r };
+                }
+                
+                const { kernel, sum } = blurCache[cacheKey];
+                const half = r;
+                const size = kernel.length;
+                
+                // Aplicar blur apenas onde mask == 0 (fundo)
+                // Pular processamento se não houver máscara
+                const useMask = mask && mask.length > 0;
+                
+                // Se não houver máscara, aplicar blur em toda imagem
+                if (!useMask) {
+                    // Blur horizontal
+                    const tempData2 = new Uint8ClampedArray(data);
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const idx = (y * width + x) * 4;
+                            let rSum = 0, gSum = 0, bSum = 0;
+                            let weightSum = 0;
+                            for (let i = 0; i < size; i++) {
+                                const dx = i - half;
+                                const px = Math.min(width - 1, Math.max(0, x + dx));
+                                const pIdx = (y * width + px) * 4;
+                                const w = kernel[i];
+                                rSum += tempData2[pIdx] * w;
+                                gSum += tempData2[pIdx + 1] * w;
+                                bSum += tempData2[pIdx + 2] * w;
+                                weightSum += w;
+                            }
+                            if (weightSum > 0) {
+                                data[idx] = rSum / weightSum;
+                                data[idx + 1] = gSum / weightSum;
+                                data[idx + 2] = bSum / weightSum;
+                            }
+                        }
+                    }
+                    
+                    // Blur vertical
+                    const tempData3 = new Uint8ClampedArray(data);
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const idx = (y * width + x) * 4;
+                            let rSum = 0, gSum = 0, bSum = 0;
+                            let weightSum = 0;
+                            for (let i = 0; i < size; i++) {
+                                const dy = i - half;
+                                const py = Math.min(height - 1, Math.max(0, y + dy));
+                                const pIdx = (py * width + x) * 4;
+                                const w = kernel[i];
+                                rSum += tempData3[pIdx] * w;
+                                gSum += tempData3[pIdx + 1] * w;
+                                bSum += tempData3[pIdx + 2] * w;
+                                weightSum += w;
+                            }
+                            if (weightSum > 0) {
+                                data[idx] = rSum / weightSum;
+                                data[idx + 1] = gSum / weightSum;
+                                data[idx + 2] = bSum / weightSum;
+                            }
+                        }
+                    }
+                    return imageData;
+                }
+                
+                // Com máscara - blur apenas no fundo
+                // Horizontal
+                const tempData2 = new Uint8ClampedArray(data);
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const idx = (y * width + x) * 4;
+                        const isPerson = mask[y * width + x] > 0.5;
+                        if (!isPerson) {
+                            let rSum = 0, gSum = 0, bSum = 0;
+                            let weightSum = 0;
+                            for (let i = 0; i < size; i++) {
+                                const dx = i - half;
+                                const px = Math.min(width - 1, Math.max(0, x + dx));
+                                const pIdx = (y * width + px) * 4;
+                                const w = kernel[i];
+                                rSum += tempData2[pIdx] * w;
+                                gSum += tempData2[pIdx + 1] * w;
+                                bSum += tempData2[pIdx + 2] * w;
+                                weightSum += w;
+                            }
+                            if (weightSum > 0) {
+                                data[idx] = rSum / weightSum;
+                                data[idx + 1] = gSum / weightSum;
+                                data[idx + 2] = bSum / weightSum;
+                            }
+                        }
+                    }
+                }
+                
+                // Vertical
+                const tempData3 = new Uint8ClampedArray(data);
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const idx = (y * width + x) * 4;
+                        const isPerson = mask[y * width + x] > 0.5;
+                        if (!isPerson) {
+                            let rSum = 0, gSum = 0, bSum = 0;
+                            let weightSum = 0;
+                            for (let i = 0; i < size; i++) {
+                                const dy = i - half;
+                                const py = Math.min(height - 1, Math.max(0, y + dy));
+                                const pIdx = (py * width + x) * 4;
+                                const w = kernel[i];
+                                rSum += tempData3[pIdx] * w;
+                                gSum += tempData3[pIdx + 1] * w;
+                                bSum += tempData3[pIdx + 2] * w;
+                                weightSum += w;
+                            }
+                            if (weightSum > 0) {
+                                data[idx] = rSum / weightSum;
+                                data[idx + 1] = gSum / weightSum;
+                                data[idx + 2] = bSum / weightSum;
+                            }
+                        }
+                    }
+                }
+                
+                return imageData;
+            };
+
+            // Carregar BodyPix
             const loadBodyPix = async () => {
                 try {
                     loadingIndicator.classList.add('active');
-                    loadingIndicator.querySelector('.text').textContent = '🔄 Carregando IA de segmentação...';
+                    loadingIndicator.querySelector('.text').textContent = '🔄 Carregando IA...';
                     
                     bodyPixModel = await bodyPix.load({
                         architecture: 'MobileNetV1',
                         outputStride: 16,
-                        multiplier: 0.75,
+                        multiplier: 0.5,
                         quantBytes: 2
                     });
                     
                     segmentationReady = true;
                     loadingIndicator.classList.remove('active');
-                    document.getElementById('suggestion').textContent = '🧠 IA carregada! Modo Retrato/Cinema disponível';
-                    console.log('✅ BodyPix carregado com sucesso!');
+                    document.getElementById('suggestion').textContent = '🧠 IA carregada!';
+                    console.log('✅ BodyPix carregado!');
                 } catch (error) {
-                    console.error('❌ Erro ao carregar BodyPix:', error);
+                    console.error('❌ Erro BodyPix:', error);
                     loadingIndicator.classList.remove('active');
                     loadingIndicator.querySelector('.text').textContent = '⚠️ Falha ao carregar IA';
-                    document.getElementById('suggestion').textContent = '⚠️ IA não disponível - use modo Foto ou Vídeo';
+                    document.getElementById('suggestion').textContent = '⚠️ IA não disponível';
                 }
             };
 
-            // Processar segmentação e aplicar desfoque
+            // Processar segmentação OTIMIZADO
             const processSegmentation = async () => {
                 if (!videoElement || !canvasOutput || !bodyPixModel || !segmentationReady || isProcessing) {
                     return;
@@ -1000,11 +1189,25 @@
                 try {
                     isProcessing = true;
                     
-                    // Fazer segmentação
+                    // Pular frames para performance
+                    frameCount++;
+                    if (frameCount % processEveryNFrames !== 0) {
+                        isProcessing = false;
+                        return;
+                    }
+                    
+                    const vw = videoElement.videoWidth || 640;
+                    const vh = videoElement.videoHeight || 480;
+                    
+                    // Usar resolução reduzida para segmentação
+                    const segW = Math.floor(vw / 3);
+                    const segH = Math.floor(vh / 3);
+                    
+                    // Fazer segmentação em resolução reduzida
                     const segmentation = await bodyPixModel.segmentPerson(videoElement, {
                         flipHorizontal: facingMode === 'user',
-                        internalResolution: 'medium',
-                        segmentationThreshold: 0.6
+                        internalResolution: 'low',
+                        segmentationThreshold: 0.65
                     });
 
                     if (!segmentation || !segmentation.data) {
@@ -1014,106 +1217,64 @@
 
                     lastSegmentation = segmentation;
                     
-                    // Desenhar no canvas com efeito de profundidade
-                    const width = videoElement.videoWidth || 640;
-                    const height = videoElement.videoHeight || 480;
+                    // Configurar canvas para saída
+                    const displayWidth = canvasOutput.width;
+                    const displayHeight = canvasOutput.height;
                     
-                    canvasOutput.width = width;
-                    canvasOutput.height = height;
-                    
-                    // Desenhar o vídeo original
-                    ctxOutput.drawImage(videoElement, 0, 0, width, height);
+                    // Desenhar o vídeo no canvas
+                    ctxOutput.drawImage(videoElement, 0, 0, displayWidth, displayHeight);
                     
                     // Obter dados da imagem
-                    const imageData = ctxOutput.getImageData(0, 0, width, height);
-                    const data = imageData.data;
+                    const imageData = ctxOutput.getImageData(0, 0, displayWidth, displayHeight);
                     
-                    // Dados da segmentação
+                    // Criar máscara em baixa resolução e redimensionar
                     const segData = segmentation.data;
                     const segWidth = segmentation.width;
                     const segHeight = segmentation.height;
                     
-                    // Parâmetros de desfoque baseados na abertura
-                    const aperture = APERTURE_VALUES[currentApertureIndex];
-                    const blurIntensity = aperture.blur;
+                    // Criar máscara para a resolução do canvas
+                    const mask = new Float32Array(displayWidth * displayHeight);
                     
-                    // Criar máscara de profundidade (simulada com base na segmentação)
-                    // Pessoas ficam nítidas, fundo desfocado
-                    const mask = new Float32Array(width * height);
-                    
-                    // Mapear segmentação para a imagem
-                    for (let y = 0; y < height; y++) {
-                        for (let x = 0; x < width; x++) {
-                            const segX = Math.floor((x / width) * segWidth);
-                            const segY = Math.floor((y / height) * segHeight);
+                    for (let y = 0; y < displayHeight; y++) {
+                        for (let x = 0; x < displayWidth; x++) {
+                            const segX = Math.floor((x / displayWidth) * segWidth);
+                            const segY = Math.floor((y / displayHeight) * segHeight);
                             const segIdx = segY * segWidth + segX;
-                            
-                            // 1 = pessoa, 0 = fundo
-                            const isPerson = segData[segIdx] > 0.5;
-                            mask[y * width + x] = isPerson ? 1 : 0;
+                            mask[y * displayWidth + x] = segData[segIdx] > 0.5 ? 1 : 0;
                         }
                     }
                     
-                    // Aplicar desfoque apenas no fundo (áreas com máscara 0)
-                    const blurRadius = Math.max(1, Math.floor(blurIntensity * 15));
+                    // Aplicar desfoque otimizado
+                    const aperture = APERTURE_VALUES[currentApertureIndex];
+                    const blurRadius = aperture.blur * 0.8; // Reduzido para performance
                     
+                    if (blurRadius > 0.5) {
+                        applyBlurOptimized(imageData, displayWidth, displayHeight, blurRadius, mask);
+                    }
+                    
+                    // Vinheta suave (mais leve)
                     if (blurRadius > 1) {
-                        // Desfoque simples (box blur) para o fundo
-                        const blurredData = new Uint8ClampedArray(data);
-                        const tempData = new Uint8ClampedArray(data);
+                        const centerX = displayWidth / 2;
+                        const centerY = displayHeight / 2;
+                        const maxDist = Math.min(displayWidth, displayHeight) / 2;
+                        const data = imageData.data;
+                        const vignetteStrength = 0.15;
                         
-                        // Para cada pixel, se for fundo, aplicar blur
-                        for (let y = 0; y < height; y++) {
-                            for (let x = 0; x < width; x++) {
-                                const idx = (y * width + x) * 4;
-                                const isPerson = mask[y * width + x] > 0.5;
-                                
-                                if (!isPerson) {
-                                    // Aplicar blur no fundo
-                                    let r = 0, g = 0, b = 0, count = 0;
-                                    const half = Math.floor(blurRadius / 2);
-                                    
-                                    for (let dy = -half; dy <= half; dy++) {
-                                        for (let dx = -half; dx <= half; dx++) {
-                                            const px = Math.min(width - 1, Math.max(0, x + dx));
-                                            const py = Math.min(height - 1, Math.max(0, y + dy));
-                                            const pIdx = (py * width + px) * 4;
-                                            r += tempData[pIdx];
-                                            g += tempData[pIdx + 1];
-                                            b += tempData[pIdx + 2];
-                                            count++;
-                                        }
-                                    }
-                                    
-                                    if (count > 0) {
-                                        data[idx] = r / count;
-                                        data[idx + 1] = g / count;
-                                        data[idx + 2] = b / count;
-                                    }
-                                }
+                        for (let y = 0; y < displayHeight; y++) {
+                            for (let x = 0; x < displayWidth; x++) {
+                                const idx = (y * displayWidth + x) * 4;
+                                const dist = Math.hypot(x - centerX, y - centerY);
+                                const vignette = 1 - Math.pow(dist / maxDist, 2) * vignetteStrength;
+                                data[idx] *= vignette;
+                                data[idx + 1] *= vignette;
+                                data[idx + 2] *= vignette;
                             }
-                        }
-                    }
-                    
-                    // Aplicar vinheta (efeito de lente)
-                    const centerX = width / 2;
-                    const centerY = height / 2;
-                    const maxDist = Math.min(width, height) / 2;
-                    
-                    for (let y = 0; y < height; y++) {
-                        for (let x = 0; x < width; x++) {
-                            const idx = (y * width + x) * 4;
-                            const dist = Math.hypot(x - centerX, y - centerY);
-                            const vignette = 1 - Math.pow(dist / maxDist, 2.5) * 0.3;
-                            data[idx] *= vignette;
-                            data[idx + 1] *= vignette;
-                            data[idx + 2] *= vignette;
                         }
                     }
                     
                     ctxOutput.putImageData(imageData, 0, 0);
                     
-                    // Mostrar informações de abertura
+                    // Atualizar display da abertura
                     const aperDisplay = document.querySelector('.aperture-control .value');
                     if (aperDisplay) {
                         aperDisplay.textContent = aperture.label;
@@ -1126,7 +1287,7 @@
                 }
             };
 
-            // Loop de processamento
+            // Loop de processamento OTIMIZADO
             const startProcessingLoop = () => {
                 if (animationFrame) {
                     cancelAnimationFrame(animationFrame);
@@ -1135,6 +1296,11 @@
                 const processLoop = async () => {
                     if (currentMode === 'portrait' || currentMode === 'cinema') {
                         await processSegmentation();
+                    } else {
+                        // Limpar canvas se não estiver em modo IA
+                        if (canvasOutput) {
+                            ctxOutput.clearRect(0, 0, canvasOutput.width, canvasOutput.height);
+                        }
                     }
                     animationFrame = requestAnimationFrame(processLoop);
                 };
@@ -1157,7 +1323,7 @@
                             <div class="aperture-control" id="apertureControl">
                                 <div class="label">📸 Abertura</div>
                                 <div class="value" id="apertureValue">f/2.8</div>
-                                <div class="sub">Profundidade de campo</div>
+                                <div class="sub">Profundidade</div>
                                 <input type="range" class="aperture-slider" id="apertureSlider" 
                                        min="0" max="${APERTURE_VALUES.length - 1}" value="2" step="1" />
                             </div>
@@ -1174,10 +1340,10 @@
                             <div class="camera-selector" id="cameraSelector"></div>
                             
                             <div class="score-panel">
-                                <div class="score-item"><span>Composição</span><span class="score-value" id="compScore">--</span></div>
-                                <div class="score-item"><span>Iluminação</span><span class="score-value" id="lightScore">--</span></div>
-                                <div class="score-item"><span>Enquadramento</span><span class="score-value" id="frameScore">--</span></div>
-                                <div class="score-item" style="border-top:1px solid rgba(255,255,255,0.06);padding-top:2px;margin-top:1px">
+                                <div class="score-item"><span>Comp</span><span class="score-value" id="compScore">--</span></div>
+                                <div class="score-item"><span>Luz</span><span class="score-value" id="lightScore">--</span></div>
+                                <div class="score-item"><span>Quadro</span><span class="score-value" id="frameScore">--</span></div>
+                                <div class="score-item" style="border-top:1px solid rgba(255,255,255,0.04);padding-top:1px;margin-top:1px">
                                     <span>Geral</span>
                                     <span class="score-value" style="color:#fbbf24" id="overallScore">--</span>
                                 </div>
@@ -1205,7 +1371,7 @@
                                 
                                 <div class="action-buttons">
                                     <button class="action-btn" id="flipBtn">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M4 8v-2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/>
                                             <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
                                             <path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/>
@@ -1231,23 +1397,28 @@
                 zoomSlider = document.getElementById('zoomSlider');
                 loadingIndicator = document.getElementById('loadingIndicator');
 
+                // Configurar tamanho do canvas
+                const resizeCanvas = () => {
+                    const rect = videoElement.getBoundingClientRect();
+                    canvasOutput.width = Math.floor(rect.width * 0.8);
+                    canvasOutput.height = Math.floor(rect.height * 0.8);
+                };
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+
                 // Eventos
                 setupEvents();
                 
-                // Detectar câmeras e iniciar
                 detectCameras().then(() => {
                     startCamera();
                 });
                 
-                // Carregar BodyPix em background
                 setTimeout(() => {
                     loadBodyPix();
-                }, 1000);
+                }, 1500);
                 
                 renderGuideOverlay(currentComposition, getCurrentPosition());
                 updateLabel();
-                
-                // Iniciar loop de processamento
                 startProcessingLoop();
             };
 
@@ -1255,7 +1426,6 @@
             const setupEvents = () => {
                 const wrapper = document.getElementById('videoWrapper');
                 
-                // Toque para focar
                 wrapper.addEventListener('click', function(e) {
                     if (e.target.closest('.action-btn') || e.target.closest('.shutter-btn') || 
                         e.target.closest('.mode-filter-btn') || e.target.closest('.comp-chip') ||
@@ -1269,7 +1439,6 @@
                     setFocus(x, y);
                 });
 
-                // Touch para zoom (pinça)
                 let lastTouchDist = 0;
                 wrapper.addEventListener('touchstart', function(e) {
                     if (e.touches.length === 2) {
@@ -1286,8 +1455,8 @@
                         const t1 = e.touches[0];
                         const t2 = e.touches[1];
                         const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-                        const delta = (dist - lastTouchDist) / 200;
-                        const newZoom = Math.max(1, Math.min(5, currentZoom + delta));
+                        const delta = (dist - lastTouchDist) / 300;
+                        const newZoom = Math.max(1, Math.min(4, currentZoom + delta));
                         setZoom(newZoom);
                         lastTouchDist = dist;
                     }
@@ -1296,11 +1465,10 @@
                 wrapper.addEventListener('touchend', function(e) {
                     if (e.touches.length < 2) {
                         isZoomActive = false;
-                        setTimeout(() => zoomSlider.classList.remove('active'), 2000);
+                        setTimeout(() => zoomSlider.classList.remove('active'), 1500);
                     }
                 }, { passive: true });
 
-                // Botão flip
                 document.getElementById('flipBtn').addEventListener('click', () => {
                     if (availableCameras.length > 1) {
                         const next = (currentCameraIndex + 1) % availableCameras.length;
@@ -1314,45 +1482,39 @@
                     }
                 });
 
-                // Botão shutter
                 document.getElementById('shutterBtn').addEventListener('click', handleShutter);
                 
-                // Botão abertura
                 document.getElementById('apertureBtn').addEventListener('click', () => {
                     isApertureActive = !isApertureActive;
                     apertureControl.classList.toggle('active', isApertureActive);
                     if (isApertureActive) {
-                        document.getElementById('suggestion').textContent = '⭕ Ajuste a abertura com o slider';
+                        document.getElementById('suggestion').textContent = '⭕ Ajuste a abertura';
                     }
                 });
 
-                // Slider de abertura
                 apertureSlider.addEventListener('input', function() {
                     currentApertureIndex = parseInt(this.value);
                     const aperture = APERTURE_VALUES[currentApertureIndex];
                     apertureValueDisplay.textContent = aperture.label;
-                    document.getElementById('suggestion').textContent = `⭕ Abertura ${aperture.label} - ${Math.round(aperture.blur * 100)}% desfoque`;
+                    document.getElementById('suggestion').textContent = `⭕ ${aperture.label}`;
                     
-                    // Se estiver no modo retrato ou cinema, forçar reprocessamento
                     if (currentMode === 'portrait' || currentMode === 'cinema') {
                         isProcessing = false;
                     }
                 });
 
-                // Modos
                 document.querySelectorAll('.mode-filter-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
                         document.querySelectorAll('.mode-filter-btn').forEach(b => b.classList.remove('active'));
                         this.classList.add('active');
                         currentMode = this.dataset.mode;
                         
-                        // Mostrar/ocultar canvas de processamento
                         const isIA = currentMode === 'portrait' || currentMode === 'cinema';
                         canvasOutput.classList.toggle('active', isIA);
                         apertureControl.classList.toggle('active', isIA);
                         
                         if (isIA && !segmentationReady) {
-                            document.getElementById('suggestion').textContent = '⏳ Carregando IA de segmentação...';
+                            document.getElementById('suggestion').textContent = '⏳ Carregando IA...';
                             loadBodyPix();
                         }
                         
@@ -1360,25 +1522,22 @@
                         if (currentMode === 'video' || currentMode === 'cinema') {
                             shutter.classList.add('recording');
                             document.getElementById('suggestion').textContent = currentMode === 'cinema' ? 
-                                '🎬 Modo Cinema - Toque para gravar com desfoque IA' : 
-                                '🎥 Toque no botão vermelho para gravar';
+                                '🎬 Cinema - Toque para gravar' : '🎥 Toque para gravar';
                         } else {
                             shutter.classList.remove('recording');
                             if (currentMode === 'portrait') {
-                                document.getElementById('suggestion').textContent = '👤 Modo Retrato - Desfoque inteligente com IA';
+                                document.getElementById('suggestion').textContent = '👤 Retrato com IA';
                             } else {
-                                document.getElementById('suggestion').textContent = '📸 Toque no botão para capturar';
+                                document.getElementById('suggestion').textContent = '📸 Toque para capturar';
                             }
                         }
                         
-                        // Forçar reprocessamento
                         if (isIA) {
                             isProcessing = false;
                         }
                     });
                 });
 
-                // Composições
                 document.querySelectorAll('.comp-chip').forEach(chip => {
                     chip.addEventListener('click', function() {
                         const id = this.dataset.id;
@@ -1390,12 +1549,11 @@
                             updateChips();
                             updateLabel();
                             this.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                            document.getElementById('suggestion').textContent = `📍 ${comp.label} - Toque na tela para mudar posição`;
+                            document.getElementById('suggestion').textContent = `📍 ${comp.label}`;
                         }
                     });
                 });
 
-                // Clique na tela para mudar posição
                 document.addEventListener('click', function(e) {
                     const target = e.target;
                     if (target.closest('.comp-chip') || target.closest('.action-btn') || 
@@ -1406,18 +1564,17 @@
                     }
                     if (currentMode !== 'video' && currentMode !== 'cinema') {
                         nextPosition();
-                        document.getElementById('suggestion').textContent = `📍 ${currentComposition.label} - Posição: ${getCurrentPosition()}`;
+                        document.getElementById('suggestion').textContent = `📍 ${getCurrentPosition()}`;
                     }
                 });
 
-                // Slider de zoom
                 const slider = document.getElementById('zoomSlider');
                 slider.addEventListener('touchstart', function(e) {
                     e.preventDefault();
                     const touch = e.touches[0];
                     const rect = this.getBoundingClientRect();
                     const y = (touch.clientY - rect.top) / rect.height;
-                    const zoomVal = 1 + (1 - y) * 4;
+                    const zoomVal = 1 + (1 - y) * 3;
                     setZoom(zoomVal);
                 }, { passive: false });
 
@@ -1426,7 +1583,7 @@
                     const touch = e.touches[0];
                     const rect = this.getBoundingClientRect();
                     const y = (touch.clientY - rect.top) / rect.height;
-                    const zoomVal = 1 + (1 - Math.max(0, Math.min(1, y))) * 4;
+                    const zoomVal = 1 + (1 - Math.max(0, Math.min(1, y))) * 3;
                     setZoom(zoomVal);
                 }, { passive: false });
             };
@@ -1437,22 +1594,21 @@
                 focusIndicator.classList.remove('active');
                 void focusIndicator.offsetWidth;
                 focusIndicator.classList.add('active');
-                setTimeout(() => focusIndicator.classList.remove('active'), 800);
-                document.getElementById('suggestion').textContent = `🎯 Foco em ${Math.round(x*100)}%, ${Math.round(y*100)}%`;
+                setTimeout(() => focusIndicator.classList.remove('active'), 600);
+                document.getElementById('suggestion').textContent = `🎯 Foco`;
             };
 
             const setZoom = (value) => {
-                currentZoom = Math.max(1, Math.min(5, value));
+                currentZoom = Math.max(1, Math.min(4, value));
                 if (videoElement) {
                     videoElement.style.transform = `scale(${currentZoom})`;
                 }
-                const pct = ((currentZoom - 1) / 4) * 100;
+                const pct = ((currentZoom - 1) / 3) * 100;
                 const thumb = document.getElementById('zoomThumb');
                 if (thumb) thumb.style.top = (100 - pct) + '%';
-                document.getElementById('suggestion').textContent = `🔍 Zoom ${currentZoom.toFixed(1)}x`;
+                document.getElementById('suggestion').textContent = `🔍 ${currentZoom.toFixed(1)}x`;
             };
 
-            // Detectar câmeras
             const detectCameras = async () => {
                 try {
                     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -1475,7 +1631,7 @@
                 availableCameras.forEach((cam, idx) => {
                     const btn = document.createElement('button');
                     btn.className = `cam-btn ${idx === currentCameraIndex ? 'active' : ''}`;
-                    btn.textContent = cam.label ? cam.label.replace(/[^a-zA-Z0-9]/g,'').slice(0,6) : `Cam ${idx+1}`;
+                    btn.textContent = cam.label ? cam.label.replace(/[^a-zA-Z0-9]/g,'').slice(0,5) : `Cam ${idx+1}`;
                     btn.dataset.index = idx;
                     btn.addEventListener('click', () => switchCamera(idx));
                     container.appendChild(btn);
@@ -1497,7 +1653,6 @@
                 });
             };
 
-            // Iniciar câmera
             const startCamera = async (deviceId = null) => {
                 try {
                     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -1508,8 +1663,8 @@
                         video: {
                             facingMode: deviceId ? undefined : facingMode,
                             deviceId: deviceId ? { exact: deviceId } : undefined,
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
                         },
                         audio: false
                     };
@@ -1524,14 +1679,21 @@
                         videoElement.srcObject = stream;
                         await videoElement.play();
                         isCameraReady = true;
-                        document.getElementById('suggestion').textContent = '📸 Câmera pronta! Toque na tela para focar';
+                        document.getElementById('suggestion').textContent = '📸 Câmera pronta!';
+                        
+                        // Ajustar canvas após câmera iniciar
+                        setTimeout(() => {
+                            const rect = videoElement.getBoundingClientRect();
+                            canvasOutput.width = Math.floor(rect.width * 0.7);
+                            canvasOutput.height = Math.floor(rect.height * 0.7);
+                        }, 100);
                     }
                 } catch (error) {
-                    console.error('❌ Erro ao iniciar câmera:', error);
+                    console.error('❌ Erro:', error);
                     if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
                         showPermissionError('Permissão negada. Permita o acesso à câmera nas configurações do Safari.');
                     } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-                        showPermissionError('Nenhuma câmera encontrada no dispositivo.');
+                        showPermissionError('Nenhuma câmera encontrada.');
                     } else {
                         showPermissionError(error.message || 'Erro ao acessar a câmera.');
                     }
@@ -1549,7 +1711,7 @@
                 overlayDiv.className = 'permission-overlay';
                 overlayDiv.innerHTML = `
                     <h2>📷 Acesso à Câmera</h2>
-                    <p>O Photo Composition AI precisa acessar sua câmera para funcionar.</p>
+                    <p>O Photo Composition AI precisa acessar sua câmera.</p>
                     <button class="permission-btn" id="retryBtn">🔄 Tentar Novamente</button>
                     <div class="error-msg">${msg}</div>
                 `;
@@ -1561,10 +1723,9 @@
                 });
             };
 
-            // Manipular shutter
             const handleShutter = () => {
                 if (!isCameraReady || !stream) {
-                    document.getElementById('suggestion').textContent = '⏳ Aguarde a câmera iniciar';
+                    document.getElementById('suggestion').textContent = '⏳ Aguarde...';
                     return;
                 }
                 
@@ -1579,87 +1740,48 @@
                 }
             };
 
-            // Capturar foto com ou sem efeito retrato
             const capturePhoto = (portrait = false) => {
                 if (!videoElement || !isCameraReady) {
-                    document.getElementById('suggestion').textContent = '⏳ Aguarde a câmera iniciar';
+                    document.getElementById('suggestion').textContent = '⏳ Aguarde...';
                     return;
                 }
                 
                 const canvas = document.createElement('canvas');
-                const width = videoElement.videoWidth || 1280;
-                const height = videoElement.videoHeight || 720;
+                const width = videoElement.videoWidth || 640;
+                const height = videoElement.videoHeight || 480;
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 
                 if (portrait && segmentationReady && lastSegmentation) {
-                    // Usar a segmentação para aplicar desfoque
+                    // Usar segmentação para foto com IA
                     ctx.drawImage(videoElement, 0, 0, width, height);
                     const imageData = ctx.getImageData(0, 0, width, height);
-                    const data = imageData.data;
                     
                     const segData = lastSegmentation.data;
                     const segWidth = lastSegmentation.width;
                     const segHeight = lastSegmentation.height;
                     
-                    const aperture = APERTURE_VALUES[currentApertureIndex];
-                    const blurRadius = Math.max(1, Math.floor(aperture.blur * 15));
-                    
-                    // Aplicar desfoque no fundo
-                    const tempData = new Uint8ClampedArray(data);
-                    
+                    // Criar máscara
+                    const mask = new Float32Array(width * height);
                     for (let y = 0; y < height; y++) {
                         for (let x = 0; x < width; x++) {
                             const segX = Math.floor((x / width) * segWidth);
                             const segY = Math.floor((y / height) * segHeight);
                             const segIdx = segY * segWidth + segX;
-                            const isPerson = segData[segIdx] > 0.5;
-                            
-                            if (!isPerson && blurRadius > 1) {
-                                const idx = (y * width + x) * 4;
-                                let r = 0, g = 0, b = 0, count = 0;
-                                const half = Math.floor(blurRadius / 2);
-                                
-                                for (let dy = -half; dy <= half; dy++) {
-                                    for (let dx = -half; dx <= half; dx++) {
-                                        const px = Math.min(width - 1, Math.max(0, x + dx));
-                                        const py = Math.min(height - 1, Math.max(0, y + dy));
-                                        const pIdx = (py * width + px) * 4;
-                                        r += tempData[pIdx];
-                                        g += tempData[pIdx + 1];
-                                        b += tempData[pIdx + 2];
-                                        count++;
-                                    }
-                                }
-                                
-                                if (count > 0) {
-                                    data[idx] = r / count;
-                                    data[idx + 1] = g / count;
-                                    data[idx + 2] = b / count;
-                                }
-                            }
+                            mask[y * width + x] = segData[segIdx] > 0.5 ? 1 : 0;
                         }
                     }
                     
-                    // Vinheta
-                    const centerX = width / 2;
-                    const centerY = height / 2;
-                    const maxDist = Math.min(width, height) / 2;
+                    const aperture = APERTURE_VALUES[currentApertureIndex];
+                    const blurRadius = aperture.blur * 0.6;
                     
-                    for (let y = 0; y < height; y++) {
-                        for (let x = 0; x < width; x++) {
-                            const idx = (y * width + x) * 4;
-                            const dist = Math.hypot(x - centerX, y - centerY);
-                            const vignette = 1 - Math.pow(dist / maxDist, 2.5) * 0.25;
-                            data[idx] *= vignette;
-                            data[idx + 1] *= vignette;
-                            data[idx + 2] *= vignette;
-                        }
+                    if (blurRadius > 0.5) {
+                        applyBlurOptimized(imageData, width, height, blurRadius, mask);
                     }
                     
                     ctx.putImageData(imageData, 0, 0);
-                    document.getElementById('suggestion').textContent = `👤 Retrato ${APERTURE_VALUES[currentApertureIndex].label}`;
+                    document.getElementById('suggestion').textContent = `👤 Retrato ${aperture.label}`;
                 } else if (portrait) {
                     // Fallback: desfoque radial simples
                     ctx.drawImage(videoElement, 0, 0, width, height);
@@ -1667,14 +1789,14 @@
                     const data = imageData.data;
                     const centerX = width / 2;
                     const centerY = height / 2;
-                    const radius = Math.min(width, height) * 0.35;
+                    const radius = Math.min(width, height) * 0.3;
                     
                     for (let y = 0; y < height; y++) {
                         for (let x = 0; x < width; x++) {
                             const dist = Math.hypot(x - centerX, y - centerY);
                             if (dist > radius) {
                                 const idx = (y * width + x) * 4;
-                                const blur = Math.min(0.6, (dist - radius) / radius * 0.5);
+                                const blur = Math.min(0.4, (dist - radius) / radius * 0.3);
                                 data[idx] = data[idx] * (1 - blur);
                                 data[idx + 1] = data[idx + 1] * (1 - blur);
                                 data[idx + 2] = data[idx + 2] * (1 - blur);
@@ -1682,16 +1804,15 @@
                         }
                     }
                     ctx.putImageData(imageData, 0, 0);
-                    document.getElementById('suggestion').textContent = '👤 Retrato (modo simples)';
+                    document.getElementById('suggestion').textContent = '👤 Retrato (simples)';
                 } else {
                     ctx.drawImage(videoElement, 0, 0, width, height);
-                    document.getElementById('suggestion').textContent = `📸 ${currentComposition.label} aplicada!`;
+                    document.getElementById('suggestion').textContent = `📸 ${currentComposition.label}`;
                 }
                 
-                const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
                 showPreview(dataUrl, portrait ? 'portrait' : 'photo');
                 
-                // Atualizar scores
                 const compScore = Math.floor(60 + Math.random() * 35);
                 const lightScore = Math.floor(50 + Math.random() * 40);
                 const frameScore = Math.floor(55 + Math.random() * 40);
@@ -1706,7 +1827,7 @@
                 preview.className = 'photo-preview';
                 preview.innerHTML = `
                     <img src="${url}" alt="Foto" />
-                    <div style="color:#aaa;font-size:11px;margin-top:8px;">
+                    <div style="color:#888;font-size:10px;margin-top:6px;">
                         ${type === 'portrait' ? `👤 Retrato ${APERTURE_VALUES[currentApertureIndex].label}` : '📷 Foto'} • ${currentComposition.label}
                     </div>
                     <div class="photo-actions">
@@ -1717,7 +1838,6 @@
                 document.body.appendChild(preview);
             };
 
-            // Gravação de vídeo
             const toggleRecording = async (cinemaMode = false) => {
                 if (isRecording) {
                     if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -1732,12 +1852,12 @@
                         recordingTimer = null;
                     }
                     seconds = 0;
-                    document.getElementById('suggestion').textContent = cinemaMode ? '🎬 Vídeo Cinema salvo!' : '✅ Vídeo salvo!';
+                    document.getElementById('suggestion').textContent = cinemaMode ? '🎬 Cinema salvo!' : '✅ Vídeo salvo!';
                     return;
                 }
 
                 if (!stream) {
-                    document.getElementById('suggestion').textContent = '⏳ Aguarde a câmera iniciar';
+                    document.getElementById('suggestion').textContent = '⏳ Aguarde...';
                     return;
                 }
                 
@@ -1746,10 +1866,9 @@
                         throw new Error('MediaRecorder não suportado');
                     }
 
-                    // Para modo cinema, tentar capturar o canvas com efeito
                     let sourceStream = stream;
                     if (cinemaMode && canvasOutput && canvasOutput.captureStream) {
-                        sourceStream = canvasOutput.captureStream(30);
+                        sourceStream = canvasOutput.captureStream(15);
                     }
 
                     const options = { mimeType: 'video/mp4' };
@@ -1764,7 +1883,7 @@
 
                     mediaRecorder.onstop = () => {
                         if (recordedChunks.length === 0) {
-                            document.getElementById('suggestion').textContent = '⚠️ Nenhum dado gravado';
+                            document.getElementById('suggestion').textContent = '⚠️ Nenhum dado';
                             return;
                         }
                         const blob = new Blob(recordedChunks, { type: 'video/mp4' });
@@ -1773,7 +1892,7 @@
                         preview.className = 'photo-preview';
                         preview.innerHTML = `
                             <video src="${url}" controls autoplay></video>
-                            <div style="color:#aaa;font-size:11px;margin-top:8px;">
+                            <div style="color:#888;font-size:10px;margin-top:6px;">
                                 ${cinemaMode ? `🎬 Cinema ${APERTURE_VALUES[currentApertureIndex].label}` : '🎥 Vídeo'} • ${currentComposition.label}
                             </div>
                             <div class="photo-actions">
@@ -1796,10 +1915,10 @@
                         const secs = String(seconds % 60).padStart(2, '0');
                         document.getElementById('timerBadge').textContent = `${mins}:${secs}`;
                     }, 1000);
-                    document.getElementById('suggestion').textContent = cinemaMode ? '🎬 Gravando Cinema com IA...' : '🔴 Gravando...';
+                    document.getElementById('suggestion').textContent = cinemaMode ? '🎬 Gravando Cinema...' : '🔴 Gravando...';
                 } catch (err) {
-                    console.error('Erro ao gravar:', err);
-                    document.getElementById('suggestion').textContent = '⚠️ Erro ao gravar: ' + err.message;
+                    console.error('Erro:', err);
+                    document.getElementById('suggestion').textContent = '⚠️ Erro: ' + err.message;
                 }
             };
 
@@ -1816,8 +1935,8 @@
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                     root.innerHTML = `
                         <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;padding:30px;text-align:center;background:#000;color:#fff;">
-                            <h2 style="font-size:24px;margin-bottom:10px;">📱 Dispositivo não compatível</h2>
-                            <p style="color:#aaa;max-width:300px;">Seu navegador não suporta acesso à câmera.</p>
+                            <h2 style="font-size:20px;margin-bottom:8px;">📱 Dispositivo não compatível</h2>
+                            <p style="color:#888;max-width:260px;">Seu navegador não suporta acesso à câmera.</p>
                         </div>
                     `;
                     return false;
@@ -1829,26 +1948,22 @@
                 createApp();
             }
 
-            // Sugestões IA
+            // Sugestões IA (mais leves)
             setInterval(() => {
                 const el = document.getElementById('suggestion');
-                if (el && !el.textContent.includes('📚') && !el.textContent.includes('✅') && 
-                    !el.textContent.includes('🔴') && !el.textContent.includes('🎬') && 
-                    !el.textContent.includes('📍') && !el.textContent.includes('🎯') &&
-                    !el.textContent.includes('⭕') && !el.textContent.includes('🔍') &&
-                    !el.textContent.includes('👤') && !el.textContent.includes('📸') &&
-                    !el.textContent.includes('⏳') && !el.textContent.includes('⚠️') &&
-                    !el.textContent.includes('🧠') && isCameraReady) {
+                if (el && isCameraReady && !el.textContent.includes('📍') && !el.textContent.includes('⭕') &&
+                    !el.textContent.includes('🔴') && !el.textContent.includes('✅') && !el.textContent.includes('🎬') &&
+                    !el.textContent.includes('⏳') && !el.textContent.includes('⚠️') && !el.textContent.includes('📸') &&
+                    !el.textContent.includes('🎯') && !el.textContent.includes('🔍') && !el.textContent.includes('👤') &&
+                    !el.textContent.includes('🧠') && !el.textContent.includes('🎥')) {
                     const actions = [
                         'Mova para esquerda', 'Mova para direita', 'Aproxime', 'Afaste',
-                        'Suba a câmera', 'Abaixe a câmera', 'Gire levemente',
                         'Alinhe ao horizonte', 'Posicione no ponto ideal',
-                        `Aplique ${currentComposition.label}`,
-                        'Toque para focar', 'Ajuste a abertura'
+                        `Aplique ${currentComposition.label}`
                     ];
                     el.textContent = actions[Math.floor(Math.random() * actions.length)];
                 }
-            }, 5000);
+            }, 6000);
 
         })();
     </script>
