@@ -24,6 +24,7 @@
             position: fixed;
             top: 0;
             left: 0;
+            touch-action: none;
         }
         #root {
             height: 100%;
@@ -81,26 +82,105 @@
             backdrop-filter: blur(4px);
             pointer-events: none;
         }
-        .controls {
+        
+        /* Novos controles inferiores estilo filtros */
+        .bottom-controls {
             position: absolute;
-            bottom: 30px;
+            bottom: 0;
             left: 0;
             width: 100%;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 0 20px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8) 30%);
+            padding: 20px 0 30px 0;
             z-index: 20;
+            pointer-events: none;
         }
-        .ctrl-btn {
-            width: 55px;
-            height: 55px;
+        .bottom-controls > * {
+            pointer-events: auto;
+        }
+        
+        .mode-filters {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 15px;
+            padding: 0 20px;
+        }
+        .mode-filter-btn {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.2);
+            color: #aaa;
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: 0.2s;
+            touch-action: manipulation;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            backdrop-filter: blur(4px);
+        }
+        .mode-filter-btn.active {
+            background: #fbbf24;
+            border-color: #fbbf24;
+            color: #000;
+        }
+        .mode-filter-btn:active {
+            transform: scale(0.92);
+        }
+        
+        .composition-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 0 16px 10px 16px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .composition-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .comp-chip {
+            flex: 0 0 auto;
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(6px);
+            padding: 5px 14px;
+            border-radius: 16px;
+            font-size: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #ccc;
+            transition: 0.2s;
+            touch-action: manipulation;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            white-space: nowrap;
+        }
+        .comp-chip.active {
+            background: rgba(255, 215, 0, 0.25);
+            border-color: #fbbf24;
+            color: #fbbf24;
+        }
+        .comp-chip:active {
+            transform: scale(0.92);
+        }
+        
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 25px;
+            padding: 0 20px;
+            margin-top: 5px;
+        }
+        .action-btn {
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
             color: white;
-            font-size: 22px;
+            font-size: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -109,24 +189,47 @@
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
-        .ctrl-btn:active {
-            transform: scale(0.92);
-            background: rgba(255, 255, 255, 0.3);
+        .action-btn:active {
+            transform: scale(0.88);
+            background: rgba(255,255,255,0.25);
         }
         .shutter-btn {
-            width: 75px;
-            height: 75px;
+            width: 72px;
+            height: 72px;
             border-radius: 50%;
             background: white;
-            border: 4px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+            border: 4px solid rgba(255,255,255,0.5);
+            box-shadow: 0 0 40px rgba(255,255,255,0.15);
             touch-action: manipulation;
             cursor: pointer;
             -webkit-tap-highlight-color: transparent;
+            transition: 0.15s;
         }
         .shutter-btn:active {
-            transform: scale(0.9);
+            transform: scale(0.88);
         }
+        .shutter-btn.recording {
+            background: #ff3b30;
+            border-color: #ff3b30;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .record-dot {
+            width: 20px;
+            height: 20px;
+            background: #ff3b30;
+            border-radius: 4px;
+            margin: 0 auto;
+        }
+        .shutter-btn.recording .record-dot {
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+        }
+        
         .score-panel {
             position: absolute;
             top: 20px;
@@ -153,14 +256,14 @@
         }
         .ai-suggestion {
             position: absolute;
-            bottom: 120px;
+            bottom: 180px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(8px);
-            padding: 10px 20px;
+            padding: 8px 18px;
             border-radius: 30px;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             border: 1px solid rgba(255, 215, 0, 0.3);
             color: #fbbf24;
@@ -170,87 +273,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
             pointer-events: none;
-        }
-        .guide-selector {
-            position: absolute;
-            top: 80px;
-            left: 12px;
-            z-index: 20;
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-            max-height: 55%;
-            overflow-y: auto;
-            pointer-events: auto;
-            padding-right: 5px;
-            width: 150px;
-        }
-        .guide-selector::-webkit-scrollbar {
-            width: 3px;
-        }
-        .guide-selector::-webkit-scrollbar-thumb {
-            background: rgba(255, 215, 0, 0.3);
-            border-radius: 10px;
-        }
-        .guide-chip {
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(6px);
-            padding: 4px 10px;
-            border-radius: 16px;
-            font-size: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #ccc;
-            transition: 0.2s;
-            touch-action: manipulation;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            text-align: left;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .guide-chip.active {
-            background: rgba(255, 215, 0, 0.25);
-            border-color: #fbbf24;
-            color: #fbbf24;
-        }
-        .guide-chip:active {
-            transform: scale(0.95);
-        }
-        .mode-tabs {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 25;
-            display: flex;
-            gap: 8px;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            padding: 4px 12px;
-            border-radius: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            pointer-events: auto;
-        }
-        .mode-tab {
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            color: #aaa;
-            transition: 0.2s;
-            touch-action: manipulation;
-            cursor: pointer;
-            background: transparent;
-            border: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .mode-tab.active {
-            background: #fbbf24;
-            color: #000;
-        }
-        .mode-tab:active {
-            transform: scale(0.95);
         }
         .permission-overlay {
             position: absolute;
@@ -312,9 +334,9 @@
             padding: 20px;
             backdrop-filter: blur(10px);
         }
-        .photo-preview img {
+        .photo-preview img, .photo-preview video {
             max-width: 100%;
-            max-height: 70%;
+            max-height: 65%;
             border-radius: 12px;
             object-fit: contain;
             border: 1px solid rgba(255,255,255,0.1);
@@ -345,53 +367,73 @@
             background: #333;
             color: #fff;
         }
+        .timer-badge {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 0, 0.8);
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            z-index: 30;
+            display: none;
+        }
+        .timer-badge.active {
+            display: block;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
         @media (max-width: 430px) {
             .score-panel {
-                padding: 8px 10px;
-                min-width: 70px;
+                padding: 6px 10px;
+                min-width: 65px;
+                top: 14px;
+                right: 10px;
             }
             .score-item {
-                font-size: 10px;
-            }
-            .guide-chip {
                 font-size: 9px;
-                padding: 3px 8px;
+                padding: 1px 0;
             }
-            .guide-selector {
-                width: 130px;
-                max-height: 50%;
-                top: 75px;
-                left: 8px;
-                gap: 2px;
+            .mode-filter-btn {
+                font-size: 11px;
+                padding: 4px 14px;
             }
-            .ctrl-btn {
-                width: 48px;
-                height: 48px;
-                font-size: 18px;
+            .mode-filters {
+                gap: 15px;
+            }
+            .comp-chip {
+                font-size: 9px;
+                padding: 4px 10px;
+            }
+            .action-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 16px;
             }
             .shutter-btn {
-                width: 64px;
-                height: 64px;
+                width: 62px;
+                height: 62px;
             }
             .ai-suggestion {
-                font-size: 12px;
-                padding: 8px 16px;
-                bottom: 110px;
-                max-width: 90%;
-            }
-            .mode-tabs {
-                gap: 4px;
-                padding: 3px 8px;
-                top: 16px;
-            }
-            .mode-tab {
-                font-size: 10px;
-                padding: 4px 10px;
+                font-size: 11px;
+                padding: 6px 14px;
+                bottom: 165px;
+                max-width: 92%;
             }
             .guide-label {
                 font-size: 10px;
                 padding: 3px 10px;
                 bottom: 8px;
+            }
+            .bottom-controls {
+                padding: 12px 0 20px 0;
             }
         }
     </style>
@@ -401,98 +443,40 @@
     <script>
         // TODAS AS 57 REGRAS DE COMPOSIÇÃO
         const COMPOSITION_RULES = [
-            // 🎯 Posicionamento do assunto (6)
-            'Regra dos Terços',
-            'Proporção Áurea',
-            'Espiral Áurea',
-            'Regra do Centro',
-            'Regra dos Quartos',
-            'Regra dos Nove Quadrantes',
-            // 📐 Equilíbrio visual (4)
-            'Simetria',
-            'Assimetria Balanceada',
-            'Equilíbrio de Peso Visual',
-            'Regra dos Ímpares',
-            // 🧭 Linhas e direção do olhar (5)
-            'Linhas Guia',
-            'Linhas Diagonais',
-            'Linhas Horizontais',
-            'Linhas Verticais',
-            'Pontos de Fuga',
-            // 🏗️ Estrutura da cena (5)
-            'Enquadramento Natural',
-            'Moldura Dentro da Moldura',
-            'Camadas',
-            'Profundidade de Campo',
-            'Sobreposição de Elementos',
-            // 🌌 Espaço e área visual (4)
-            'Espaço Negativo',
-            'Espaço Positivo',
-            'Espaço Respirável',
-            'Minimalismo na Composição',
-            // 🔁 Padrões e repetição (4)
-            'Ritmo Visual',
-            'Repetição de Formas',
-            'Textura',
-            'Padrões Geométricos',
-            // 🎭 Foco e atenção (5)
-            'Ponto Focal Único',
-            'Múltiplos Pontos Focais',
-            'Contraste de Foco',
-            'Isolamento do Sujeito',
-            'Bokeh',
-            // 🎨 Luz e contraste (6)
-            'Luz Dura vs Luz Suave',
-            'Contraste Tonal',
-            'High Key',
-            'Low Key',
-            'Silhueta',
-            'Contraluz',
-            // 📏 Geometria e forma (4)
-            'Triângulos Composicionais',
-            'Círculos e Curvas',
-            'Formas Geométricas Implícitas',
-            'Composição Triangular',
-            // 🧠 Psicologia visual (4)
-            'Hierarquia Visual',
-            'Fluxo de Leitura da Imagem',
-            'Direção Natural do Olhar',
-            'Peso Visual',
-            // 🎬 Regras cinematográficas (5)
-            'Regra do Olhar',
-            'Regra da Cabeça',
-            'Plano de Fundo Limpo',
-            'Separação de Planos',
-            'Enquadramento Narrativo',
-            // ⚡ Regras modernas/criativas (5)
-            'Quebra Intencional de Regras',
-            'Caos Controlado',
-            'Composição Abstrata',
-            'Minimalismo Extremo',
-            'Assimetria Radical'
+            'Regra dos Terços', 'Proporção Áurea', 'Espiral Áurea', 'Regra do Centro',
+            'Regra dos Quartos', 'Regra dos Nove Quadrantes', 'Simetria',
+            'Assimetria Balanceada', 'Equilíbrio de Peso Visual', 'Regra dos Ímpares',
+            'Linhas Guia', 'Linhas Diagonais', 'Linhas Horizontais', 'Linhas Verticais',
+            'Pontos de Fuga', 'Enquadramento Natural', 'Moldura Dentro da Moldura',
+            'Camadas', 'Profundidade de Campo', 'Sobreposição de Elementos',
+            'Espaço Negativo', 'Espaço Positivo', 'Espaço Respirável',
+            'Minimalismo na Composição', 'Ritmo Visual', 'Repetição de Formas',
+            'Textura', 'Padrões Geométricos', 'Ponto Focal Único',
+            'Múltiplos Pontos Focais', 'Contraste de Foco', 'Isolamento do Sujeito',
+            'Bokeh', 'Luz Dura vs Luz Suave', 'Contraste Tonal', 'High Key',
+            'Low Key', 'Silhueta', 'Contraluz', 'Triângulos Composicionais',
+            'Círculos e Curvas', 'Formas Geométricas Implícitas', 'Composição Triangular',
+            'Hierarquia Visual', 'Fluxo de Leitura da Imagem', 'Direção Natural do Olhar',
+            'Peso Visual', 'Regra do Olhar', 'Regra da Cabeça', 'Plano de Fundo Limpo',
+            'Separação de Planos', 'Enquadramento Narrativo', 'Quebra Intencional de Regras',
+            'Caos Controlado', 'Composição Abstrata', 'Minimalismo Extremo', 'Assimetria Radical'
         ];
 
         (function() {
             const root = document.getElementById('root');
-
-            // Estado
             let facingMode = 'environment';
             let currentGuide = 'Regra dos Terços';
             let stream = null;
             let isCameraReady = false;
             let videoElement = null;
             let zoomLevel = 1;
+            let isRecording = false;
+            let mediaRecorder = null;
+            let recordedChunks = [];
+            let recordingTimer = null;
+            let seconds = 0;
 
-            // Função para renderizar o seletor de guias
-            const renderGuideSelector = () => {
-                return COMPOSITION_RULES.map(rule => `
-                    <div class="guide-chip ${rule === currentGuide ? 'active' : ''}" data-guide="${rule}">
-                        ${rule}
-                    </div>
-                `).join('');
-            };
-
-            // Função para renderizar a grade
+            // Renderizar guia
             const renderGuideOverlay = (guide) => {
                 const grid = document.getElementById('overlayGrid');
                 const label = document.getElementById('guideLabel');
@@ -646,8 +630,36 @@
                             <div style="position:absolute;bottom:40%;left:30%;width:40%;height:30%;background:rgba(0,0,0,0.3);clip-path:polygon(0% 100%,50% 0%,100% 100%);"></div>
                         `;
                         break;
+                    case 'Contraluz':
+                        html = `
+                            <svg width="100%" height="100%" style="position:absolute;top:0;left:0;">
+                                <circle cx="50%" cy="30%" r="20%" fill="rgba(255,200,50,0.15)" />
+                                <circle cx="50%" cy="30%" r="10%" fill="rgba(255,200,50,0.25)" />
+                                <circle cx="50%" cy="30%" r="5%" fill="rgba(255,200,50,0.4)" />
+                            </svg>
+                        `;
+                        break;
+                    case 'Bokeh':
+                        html = `
+                            <div style="position:absolute;top:20%;left:15%;width:8px;height:8px;background:rgba(255,215,0,0.3);border-radius:50%;filter:blur(2px);"></div>
+                            <div style="position:absolute;top:25%;left:75%;width:12px;height:12px;background:rgba(255,215,0,0.2);border-radius:50%;filter:blur(3px);"></div>
+                            <div style="position:absolute;top:60%;left:20%;width:6px;height:6px;background:rgba(255,215,0,0.3);border-radius:50%;filter:blur(1px);"></div>
+                            <div style="position:absolute;top:70%;left:80%;width:10px;height:10px;background:rgba(255,215,0,0.2);border-radius:50%;filter:blur(4px);"></div>
+                            <div style="position:absolute;top:40%;left:50%;width:4px;height:4px;background:rgba(255,215,0,0.4);border-radius:50%;filter:blur(1px);"></div>
+                        `;
+                        break;
+                    case 'High Key':
+                        html = `
+                            <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at center, rgba(255,255,255,0.15), transparent 70%);"></div>
+                        `;
+                        break;
+                    case 'Low Key':
+                        html = `
+                            <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.5));"></div>
+                            <div style="position:absolute;bottom:20%;left:50%;transform:translateX(-50%);width:60%;height:1px;background:rgba(255,215,0,0.2);"></div>
+                        `;
+                        break;
                     default:
-                        // Para regras sem overlay específico, mostrar apenas o label
                         html = '';
                 }
                 grid.innerHTML = html;
@@ -661,6 +673,7 @@
                             <video id="video" autoplay playsinline muted></video>
                             <div class="overlay-grid" id="overlayGrid"></div>
                             <div class="guide-label" id="guideLabel">${currentGuide}</div>
+                            <div class="timer-badge" id="timerBadge">00:00</div>
                             
                             <div class="score-panel">
                                 <div class="score-item"><span>Composição</span><span class="score-value" id="compScore">78%</span></div>
@@ -672,35 +685,43 @@
                                 </div>
                             </div>
 
-                            <div class="ai-suggestion" id="suggestion">Aponte para um objeto principal</div>
+                            <div class="ai-suggestion" id="suggestion">📸 Aponte para um objeto principal</div>
 
-                            <div class="guide-selector" id="guideSelector">
-                                ${renderGuideSelector()}
-                            </div>
-
-                            <div class="mode-tabs">
-                                <button class="mode-tab active" data-mode="camera">Câmera</button>
-                                <button class="mode-tab" data-mode="learn">Aprender</button>
-                                <button class="mode-tab" data-mode="reference">Referência</button>
-                            </div>
-
-                            <div class="controls">
-                                <button class="ctrl-btn" id="flipBtn">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M4 8v-2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/>
-                                        <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
-                                        <path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/>
-                                    </svg>
-                                </button>
-                                <button class="shutter-btn" id="shutterBtn"></button>
-                                <button class="ctrl-btn" id="zoomBtn">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="11" cy="11" r="8"/>
-                                        <path d="m21 21-4.35-4.35"/>
-                                        <path d="M11 8v6"/>
-                                        <path d="M8 11h6"/>
-                                    </svg>
-                                </button>
+                            <div class="bottom-controls">
+                                <div class="mode-filters">
+                                    <button class="mode-filter-btn active" data-mode="camera">📷 Foto</button>
+                                    <button class="mode-filter-btn" data-mode="video">🎥 Vídeo</button>
+                                    <button class="mode-filter-btn" data-mode="learn">📚 Aprender</button>
+                                </div>
+                                
+                                <div class="composition-scroll" id="compositionScroll">
+                                    ${COMPOSITION_RULES.map(rule => `
+                                        <div class="comp-chip ${rule === currentGuide ? 'active' : ''}" data-guide="${rule}">
+                                            ${rule}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                
+                                <div class="action-buttons">
+                                    <button class="action-btn" id="flipBtn">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M4 8v-2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2"/>
+                                            <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+                                            <path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/>
+                                        </svg>
+                                    </button>
+                                    <button class="shutter-btn" id="shutterBtn">
+                                        <div class="record-dot"></div>
+                                    </button>
+                                    <button class="action-btn" id="zoomBtn">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="11" cy="11" r="8"/>
+                                            <path d="m21 21-4.35-4.35"/>
+                                            <path d="M11 8v6"/>
+                                            <path d="M8 11h6"/>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -710,7 +731,7 @@
                 
                 // Eventos
                 document.getElementById('flipBtn').addEventListener('click', toggleCamera);
-                document.getElementById('shutterBtn').addEventListener('click', capturePhoto);
+                document.getElementById('shutterBtn').addEventListener('click', handleShutter);
                 document.getElementById('zoomBtn').addEventListener('click', () => {
                     zoomLevel = Math.min(zoomLevel + 0.1, 3);
                     if (videoElement) {
@@ -718,39 +739,43 @@
                     }
                 });
 
-                // Eventos para as guias
-                document.querySelectorAll('.guide-chip').forEach(chip => {
+                // Eventos para as guias (scroll horizontal)
+                document.querySelectorAll('.comp-chip').forEach(chip => {
                     chip.addEventListener('click', function() {
-                        document.querySelectorAll('.guide-chip').forEach(c => c.classList.remove('active'));
+                        document.querySelectorAll('.comp-chip').forEach(c => c.classList.remove('active'));
                         this.classList.add('active');
                         currentGuide = this.dataset.guide;
                         renderGuideOverlay(currentGuide);
+                        // Scroll para o chip centralizar
+                        this.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
                     });
                 });
 
-                // Eventos para as abas de modo
-                document.querySelectorAll('.mode-tab').forEach(tab => {
-                    tab.addEventListener('click', function() {
-                        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+                // Eventos para os modos (filtros)
+                document.querySelectorAll('.mode-filter-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        document.querySelectorAll('.mode-filter-btn').forEach(b => b.classList.remove('active'));
                         this.classList.add('active');
                         const mode = this.dataset.mode;
-                        if (mode === 'learn') {
+                        const shutter = document.getElementById('shutterBtn');
+                        if (mode === 'video') {
+                            shutter.classList.add('recording');
+                            document.getElementById('suggestion').textContent = '🎥 Toque no botão vermelho para gravar';
+                        } else if (mode === 'learn') {
+                            shutter.classList.remove('recording');
                             document.getElementById('suggestion').textContent = '📚 Toque em uma regra para aprender mais';
-                        } else if (mode === 'reference') {
-                            document.getElementById('suggestion').textContent = '📷 Carregue uma foto de referência';
                         } else {
-                            document.getElementById('suggestion').textContent = '📸 Aponte para um objeto principal';
+                            shutter.classList.remove('recording');
+                            document.getElementById('suggestion').textContent = '📸 Toque no botão para capturar';
                         }
                     });
                 });
 
-                // Iniciar câmera
                 startCamera();
-                // Renderizar guia inicial
                 renderGuideOverlay(currentGuide);
             };
 
-            // Função para iniciar a câmera
+            // Iniciar câmera
             const startCamera = async () => {
                 try {
                     const constraints = {
@@ -759,7 +784,7 @@
                             width: { ideal: 1280 },
                             height: { ideal: 720 }
                         },
-                        audio: false
+                        audio: true
                     };
 
                     stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -768,19 +793,17 @@
                         videoElement.srcObject = stream;
                         await videoElement.play();
                         isCameraReady = true;
-                        console.log('✅ Câmera iniciada com sucesso!');
+                        console.log('✅ Câmera iniciada!');
                     }
                 } catch (error) {
-                    console.error('❌ Erro ao iniciar câmera:', error);
+                    console.error('❌ Erro:', error);
                     showPermissionError(error.message);
                 }
             };
 
-            // Mostrar erro de permissão
             const showPermissionError = (msg) => {
                 const overlay = document.createElement('div');
                 overlay.className = 'permission-overlay';
-                overlay.id = 'permissionOverlay';
                 overlay.innerHTML = `
                     <h2>📷 Acesso à Câmera</h2>
                     <p>O Photo Composition AI precisa acessar sua câmera para funcionar.</p>
@@ -788,20 +811,34 @@
                     <div class="error-msg">${msg || 'Toque no botão acima e permita o acesso no Safari'}</div>
                 `;
                 document.querySelector('.video-wrapper').appendChild(overlay);
-                
                 document.getElementById('retryBtn').addEventListener('click', () => {
                     overlay.remove();
                     startCamera();
                 });
             };
 
-            // Trocar câmera
             const toggleCamera = () => {
                 facingMode = facingMode === 'environment' ? 'user' : 'environment';
                 if (stream) {
                     stream.getTracks().forEach(t => t.stop());
                 }
                 startCamera();
+            };
+
+            // Manipular shutter (foto ou vídeo)
+            const handleShutter = () => {
+                const activeMode = document.querySelector('.mode-filter-btn.active');
+                if (!activeMode) return;
+                const mode = activeMode.dataset.mode;
+                
+                if (mode === 'video') {
+                    toggleRecording();
+                } else if (mode === 'camera') {
+                    capturePhoto();
+                } else {
+                    // Modo learn - mostrar explicação da regra atual
+                    document.getElementById('suggestion').textContent = `📚 A regra "${currentGuide}" ajuda a criar composições equilibradas e harmoniosas.`;
+                }
             };
 
             // Capturar foto
@@ -818,57 +855,112 @@
                 ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
                 const dataUrl = canvas.toDataURL('image/jpeg');
                 
-                // Mostrar preview
                 const preview = document.createElement('div');
                 preview.className = 'photo-preview';
                 preview.innerHTML = `
-                    <img src="${dataUrl}" alt="Foto capturada" />
+                    <img src="${dataUrl}" alt="Foto" />
                     <div class="photo-actions">
                         <button class="btn-close" onclick="this.closest('.photo-preview').remove()">Fechar</button>
-                        <button class="btn-save" onclick="downloadPhoto('${dataUrl}')">💾 Salvar</button>
+                        <button class="btn-save" onclick="downloadMedia('${dataUrl}','jpg')">💾 Salvar</button>
                     </div>
                 `;
                 document.body.appendChild(preview);
                 
-                // Atualizar scores (simulação)
+                // Atualizar scores
                 const compScore = Math.floor(60 + Math.random() * 35);
                 const lightScore = Math.floor(50 + Math.random() * 40);
                 const frameScore = Math.floor(55 + Math.random() * 40);
-                const overall = Math.floor((compScore + lightScore + frameScore) / 3);
-                
                 document.getElementById('compScore').textContent = compScore + '%';
                 document.getElementById('lightScore').textContent = lightScore + '%';
                 document.getElementById('frameScore').textContent = frameScore + '%';
-                document.getElementById('overallScore').textContent = overall;
+                document.getElementById('overallScore').textContent = Math.floor((compScore + lightScore + frameScore) / 3);
                 
-                // Sugestão baseada na regra atual
-                const tips = [
-                    `📸 Ótima composição usando ${currentGuide}!`,
-                    `💡 Ajuste a iluminação para melhorar`,
-                    `🎯 Enquadramento perfeito com ${currentGuide}`,
-                    `🔄 Tente um ângulo diferente`,
-                    `✨ ${currentGuide} aplicada com sucesso!`
-                ];
-                document.getElementById('suggestion').textContent = tips[Math.floor(Math.random() * tips.length)];
+                document.getElementById('suggestion').textContent = `📸 ${currentGuide} aplicada com sucesso!`;
+            };
+
+            // Gravação de vídeo
+            const toggleRecording = async () => {
+                if (isRecording) {
+                    // Parar gravação
+                    if (mediaRecorder && mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                    }
+                    isRecording = false;
+                    document.getElementById('shutterBtn').classList.remove('recording');
+                    document.getElementById('timerBadge').classList.remove('active');
+                    document.getElementById('timerBadge').textContent = '00:00';
+                    if (recordingTimer) {
+                        clearInterval(recordingTimer);
+                        recordingTimer = null;
+                    }
+                    seconds = 0;
+                    document.getElementById('suggestion').textContent = '✅ Vídeo salvo com sucesso!';
+                    return;
+                }
+
+                // Iniciar gravação
+                if (!stream) return;
+                try {
+                    const options = { mimeType: 'video/mp4' };
+                    mediaRecorder = new MediaRecorder(stream, options);
+                    recordedChunks = [];
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+                        const url = URL.createObjectURL(blob);
+                        const preview = document.createElement('div');
+                        preview.className = 'photo-preview';
+                        preview.innerHTML = `
+                            <video src="${url}" controls autoplay></video>
+                            <div class="photo-actions">
+                                <button class="btn-close" onclick="this.closest('.photo-preview').remove()">Fechar</button>
+                                <button class="btn-save" onclick="downloadMedia('${url}','mp4')">💾 Salvar</button>
+                            </div>
+                        `;
+                        document.body.appendChild(preview);
+                        recordedChunks = [];
+                    };
+
+                    mediaRecorder.start(100);
+                    isRecording = true;
+                    document.getElementById('shutterBtn').classList.add('recording');
+                    document.getElementById('timerBadge').classList.add('active');
+                    seconds = 0;
+                    recordingTimer = setInterval(() => {
+                        seconds++;
+                        const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+                        const secs = String(seconds % 60).padStart(2, '0');
+                        document.getElementById('timerBadge').textContent = `${mins}:${secs}`;
+                    }, 1000);
+                    document.getElementById('suggestion').textContent = '🔴 Gravando... Toque no botão vermelho para parar';
+                } catch (err) {
+                    console.error('Erro ao gravar:', err);
+                    alert('Erro ao gravar vídeo. Verifique as permissões.');
+                }
             };
 
             // Download
-            window.downloadPhoto = (url) => {
+            window.downloadMedia = (url, ext) => {
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `photo-${Date.now()}.jpg`;
+                link.download = `photo-${Date.now()}.${ext}`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
             };
 
-            // Verificar suporte a getUserMedia
             const checkCameraSupport = () => {
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                     root.innerHTML = `
                         <div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;padding:30px;text-align:center;background:#000;color:#fff;">
                             <h2 style="font-size:24px;margin-bottom:10px;">📱 Dispositivo não compatível</h2>
-                            <p style="color:#aaa;max-width:300px;">Seu navegador não suporta acesso à câmera. Use um dispositivo com câmera e Safari/Chrome atualizado.</p>
+                            <p style="color:#aaa;max-width:300px;">Seu navegador não suporta acesso à câmera.</p>
                         </div>
                     `;
                     return false;
@@ -876,28 +968,19 @@
                 return true;
             };
 
-            // Iniciar app
             if (checkCameraSupport()) {
                 createApp();
             }
 
-            // Simular sugestões da IA a cada 5s
+            // Simular sugestões IA
             setInterval(() => {
                 const suggestionEl = document.getElementById('suggestion');
-                if (suggestionEl && !suggestionEl.textContent.includes('📚') && !suggestionEl.textContent.includes('📷')) {
+                if (suggestionEl && !suggestionEl.textContent.includes('📚') && !suggestionEl.textContent.includes('✅') && !suggestionEl.textContent.includes('🔴')) {
                     const actions = [
-                        'Mova para esquerda',
-                        'Mova para direita',
-                        'Aproxime',
-                        'Afaste',
-                        'Suba a câmera',
-                        'Abaixe a câmera',
-                        'Gire levemente',
-                        'Alinhe ao horizonte',
-                        'Posicione no ponto ideal',
-                        'Ajuste o enquadramento',
-                        'Melhor ângulo para ' + currentGuide,
-                        'Centralize o objeto principal'
+                        'Mova para esquerda', 'Mova para direita', 'Aproxime', 'Afaste',
+                        'Suba a câmera', 'Abaixe a câmera', 'Gire levemente',
+                        'Alinhe ao horizonte', 'Posicione no ponto ideal',
+                        `Aplique ${currentGuide}`, `Melhor ângulo para ${currentGuide}`
                     ];
                     suggestionEl.textContent = actions[Math.floor(Math.random() * actions.length)];
                 }
