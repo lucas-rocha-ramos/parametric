@@ -3,15 +3,15 @@
 // ============================================================
 
 const APERTURE_VALUES = [
-    { label: 'f/1.4', value: 1.4, blur: 10 },
-    { label: 'f/2.0', value: 2.0, blur: 8 },
-    { label: 'f/2.8', value: 2.8, blur: 6 },
-    { label: 'f/4.0', value: 4.0, blur: 4 },
-    { label: 'f/5.6', value: 5.6, blur: 3 },
-    { label: 'f/8.0', value: 8.0, blur: 2 },
-    { label: 'f/11', value: 11, blur: 1 },
-    { label: 'f/16', value: 16, blur: 0.5 },
-    { label: 'f/22', value: 22, blur: 0 }
+    { label: 'f/1.4', value: 1.4, blur: 12 },
+    { label: 'f/2.0', value: 2.0, blur: 10 },
+    { label: 'f/2.8', value: 2.8, blur: 8 },
+    { label: 'f/4.0', value: 4.0, blur: 6 },
+    { label: 'f/5.6', value: 5.6, blur: 4 },
+    { label: 'f/8.0', value: 8.0, blur: 2.5 },
+    { label: 'f/11', value: 11, blur: 1.5 },
+    { label: 'f/16', value: 16, blur: 0.8 },
+    { label: 'f/22', value: 22, blur: 0.3 }
 ];
 
 const COMPOSITIONS = [
@@ -58,7 +58,11 @@ const state = {
     recordingTimer: null,
     seconds: 0,
     availableCameras: [],
-    currentCameraIndex: 0
+    currentCameraIndex: 0,
+    // Novas configurações para melhor segmentação
+    segmentationQuality: 'high', // 'high' | 'medium' | 'low'
+    useMultiPerson: true,
+    featherRadius: 5
 };
 
 // ============================================================
@@ -285,21 +289,22 @@ function renderGuideOverlay(comp, position) {
 }
 
 // ============================================================
-// ===== DESFOQUE PROFISSIONAL =====
+// ===== DESFOQUE PROFISSIONAL COM SEGMENTAÇÃO MELHORADA =====
 // ============================================================
 
 function applyProfessionalBlur(imageData, width, height, radius, mask, feather) {
-    if (radius < 0.5) return imageData;
+    if (radius < 0.3) return imageData;
 
     const data = imageData.data;
     const tempData = new Uint8ClampedArray(data);
     const r = Math.round(radius);
-    const featherPx = feather || 3;
+    const featherPx = feather || 5;
 
+    // Kernel Gaussiano mais suave
     const kernelSize = r * 2 + 1;
     const kernel = [];
     let sum = 0;
-    const sigma = r * 0.6;
+    const sigma = r * 0.5;
 
     for (let i = -r; i <= r; i++) {
         const val = Math.exp(-(i * i) / (2 * sigma * sigma));
@@ -310,33 +315,14 @@ function applyProfessionalBlur(imageData, width, height, radius, mask, feather) 
     const half = r;
     const hasMask = mask && mask.length > 0;
 
-    // Horizontal pass
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            let isPerson = false;
-            let blendFactor = 0;
-
-            if (hasMask) {
-                isPerson = mask[y * width + x] > 0.5;
-                if (featherPx > 0) {
-                    let edgeCount = 0;
-                    for (let dy = -featherPx; dy <= featherPx; dy++) {
-                        for (let dx = -featherPx; dx <= featherPx; dx++) {
-                            const px = Math.min(width - 1, Math.max(0, x + dx));
-                            const py = Math.min(height - 1, Math.max(0, y + dy));
-                            if (mask[py * width + px] > 0.5) edgeCount++;
-                        }
-                    }
-                    const total = (featherPx * 2 + 1) ** 2;
-                    blendFactor = edgeCount / total;
-                }
-            }
-
-            if (!hasMask || !isPerson || blendFactor < 0.3) {
+    // Se não houver máscara, aplicar blur em toda imagem
+    if (!hasMask) {
+        // Horizontal
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
                 let rSum = 0, gSum = 0, bSum = 0;
                 let weightSum = 0;
-
                 for (let i = 0; i < kernel.length; i++) {
                     const dx = i - half;
                     const px = Math.min(width - 1, Math.max(0, x + dx));
@@ -347,20 +333,96 @@ function applyProfessionalBlur(imageData, width, height, radius, mask, feather) 
                     bSum += tempData[pIdx + 2] * w;
                     weightSum += w;
                 }
-
                 if (weightSum > 0) {
-                    if (hasMask && blendFactor > 0.3 && blendFactor < 0.7) {
-                        const mix = (blendFactor - 0.3) / 0.4;
-                        const blurR = rSum / weightSum;
-                        const blurG = gSum / weightSum;
-                        const blurB = bSum / weightSum;
+                    data[idx] = rSum / weightSum;
+                    data[idx + 1] = gSum / weightSum;
+                    data[idx + 2] = bSum / weightSum;
+                }
+            }
+        }
+        // Vertical
+        const tempV = new Uint8ClampedArray(data);
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                let rSum = 0, gSum = 0, bSum = 0;
+                let weightSum = 0;
+                for (let i = 0; i < kernel.length; i++) {
+                    const dy = i - half;
+                    const py = Math.min(height - 1, Math.max(0, y + dy));
+                    const pIdx = (py * width + x) * 4;
+                    const w = kernel[i];
+                    rSum += tempV[pIdx] * w;
+                    gSum += tempV[pIdx + 1] * w;
+                    bSum += tempV[pIdx + 2] * w;
+                    weightSum += w;
+                }
+                if (weightSum > 0) {
+                    data[idx] = rSum / weightSum;
+                    data[idx + 1] = gSum / weightSum;
+                    data[idx + 2] = bSum / weightSum;
+                }
+            }
+        }
+        return imageData;
+    }
+
+    // Com máscara - blur apenas no fundo com suavização de borda
+    // Horizontal pass
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const idx = (y * width + x) * 4;
+            let isPerson = mask[y * width + x] > 0.5;
+            
+            // Feathering - verificar vizinhança para transição suave
+            let blendFactor = 0;
+            if (featherPx > 0) {
+                let edgeCount = 0;
+                let total = 0;
+                for (let dy = -featherPx; dy <= featherPx; dy++) {
+                    for (let dx = -featherPx; dx <= featherPx; dx++) {
+                        const px = Math.min(width - 1, Math.max(0, x + dx));
+                        const py = Math.min(height - 1, Math.max(0, y + dy));
+                        if (mask[py * width + px] > 0.5) edgeCount++;
+                        total++;
+                    }
+                }
+                blendFactor = edgeCount / total;
+                // Suavizar a transição com curva sigmóide
+                blendFactor = 1 / (1 + Math.exp(-10 * (blendFactor - 0.5)));
+            }
+
+            // Aplicar blur apenas se for fundo ou estiver na borda
+            if (!isPerson || (blendFactor > 0.1 && blendFactor < 0.9)) {
+                let rSum = 0, gSum = 0, bSum = 0;
+                let weightSum = 0;
+                
+                for (let i = 0; i < kernel.length; i++) {
+                    const dx = i - half;
+                    const px = Math.min(width - 1, Math.max(0, x + dx));
+                    const pIdx = (y * width + px) * 4;
+                    const w = kernel[i];
+                    rSum += tempData[pIdx] * w;
+                    gSum += tempData[pIdx + 1] * w;
+                    bSum += tempData[pIdx + 2] * w;
+                    weightSum += w;
+                }
+                
+                if (weightSum > 0) {
+                    const blurR = rSum / weightSum;
+                    const blurG = gSum / weightSum;
+                    const blurB = bSum / weightSum;
+                    
+                    if (isPerson) {
+                        // Transição suave na borda da pessoa
+                        const mix = Math.pow(blendFactor, 1.5);
                         data[idx] = data[idx] * mix + blurR * (1 - mix);
                         data[idx + 1] = data[idx + 1] * mix + blurG * (1 - mix);
                         data[idx + 2] = data[idx + 2] * mix + blurB * (1 - mix);
                     } else {
-                        data[idx] = rSum / weightSum;
-                        data[idx + 1] = gSum / weightSum;
-                        data[idx + 2] = bSum / weightSum;
+                        data[idx] = blurR;
+                        data[idx + 1] = blurG;
+                        data[idx + 2] = blurB;
                     }
                 }
             }
@@ -372,29 +434,28 @@ function applyProfessionalBlur(imageData, width, height, radius, mask, feather) 
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const idx = (y * width + x) * 4;
-            let isPerson = false;
+            let isPerson = mask[y * width + x] > 0.5;
+            
             let blendFactor = 0;
-
-            if (hasMask) {
-                isPerson = mask[y * width + x] > 0.5;
-                if (featherPx > 0) {
-                    let edgeCount = 0;
-                    for (let dy = -featherPx; dy <= featherPx; dy++) {
-                        for (let dx = -featherPx; dx <= featherPx; dx++) {
-                            const px = Math.min(width - 1, Math.max(0, x + dx));
-                            const py = Math.min(height - 1, Math.max(0, y + dy));
-                            if (mask[py * width + px] > 0.5) edgeCount++;
-                        }
+            if (featherPx > 0) {
+                let edgeCount = 0;
+                let total = 0;
+                for (let dy = -featherPx; dy <= featherPx; dy++) {
+                    for (let dx = -featherPx; dx <= featherPx; dx++) {
+                        const px = Math.min(width - 1, Math.max(0, x + dx));
+                        const py = Math.min(height - 1, Math.max(0, y + dy));
+                        if (mask[py * width + px] > 0.5) edgeCount++;
+                        total++;
                     }
-                    const total = (featherPx * 2 + 1) ** 2;
-                    blendFactor = edgeCount / total;
                 }
+                blendFactor = edgeCount / total;
+                blendFactor = 1 / (1 + Math.exp(-10 * (blendFactor - 0.5)));
             }
 
-            if (!hasMask || !isPerson || blendFactor < 0.3) {
+            if (!isPerson || (blendFactor > 0.1 && blendFactor < 0.9)) {
                 let rSum = 0, gSum = 0, bSum = 0;
                 let weightSum = 0;
-
+                
                 for (let i = 0; i < kernel.length; i++) {
                     const dy = i - half;
                     const py = Math.min(height - 1, Math.max(0, y + dy));
@@ -405,20 +466,21 @@ function applyProfessionalBlur(imageData, width, height, radius, mask, feather) 
                     bSum += tempV[pIdx + 2] * w;
                     weightSum += w;
                 }
-
+                
                 if (weightSum > 0) {
-                    if (hasMask && blendFactor > 0.3 && blendFactor < 0.7) {
-                        const mix = (blendFactor - 0.3) / 0.4;
-                        const blurR = rSum / weightSum;
-                        const blurG = gSum / weightSum;
-                        const blurB = bSum / weightSum;
+                    const blurR = rSum / weightSum;
+                    const blurG = gSum / weightSum;
+                    const blurB = bSum / weightSum;
+                    
+                    if (isPerson) {
+                        const mix = Math.pow(blendFactor, 1.5);
                         data[idx] = data[idx] * mix + blurR * (1 - mix);
                         data[idx + 1] = data[idx + 1] * mix + blurG * (1 - mix);
                         data[idx + 2] = data[idx + 2] * mix + blurB * (1 - mix);
                     } else {
-                        data[idx] = rSum / weightSum;
-                        data[idx + 1] = gSum / weightSum;
-                        data[idx + 2] = bSum / weightSum;
+                        data[idx] = blurR;
+                        data[idx + 1] = blurG;
+                        data[idx + 2] = blurB;
                     }
                 }
             }
@@ -534,24 +596,24 @@ function setZoom(value) {
 }
 
 // ============================================================
-// ===== IA DE SEGMENTAÇÃO (BODYPIX) =====
+// ===== IA DE SEGMENTAÇÃO (BODYPIX MELHORADO) =====
 // ============================================================
 
 async function loadBodyPix() {
     try {
         dom.loadingIndicator.classList.add('active');
-        dom.loadingIndicator.querySelector('.text').textContent = '🔄 Carregando IA...';
+        dom.loadingIndicator.querySelector('.text').textContent = '🔄 Carregando IA de segmentação...';
 
         state.bodyPixModel = await bodyPix.load({
             architecture: 'MobileNetV1',
             outputStride: 16,
-            multiplier: 0.5,
+            multiplier: 0.75, // Aumentado para melhor precisão
             quantBytes: 2
         });
 
         state.segmentationReady = true;
         dom.loadingIndicator.classList.remove('active');
-        showSuggestion('🧠 IA BodyPix pronta!');
+        showSuggestion('🧠 IA de segmentação pronta!');
         console.log('✅ BodyPix carregado com sucesso!');
     } catch (error) {
         console.error('❌ Erro ao carregar BodyPix:', error);
@@ -560,6 +622,41 @@ async function loadBodyPix() {
         showSuggestion('⚠️ Modo IA indisponível - use Foto ou Vídeo');
         state.segmentationReady = false;
     }
+}
+
+// Suavização de máscara com filtro de média
+function smoothMask(mask, width, height, iterations = 2) {
+    const smoothed = new Float32Array(mask);
+    const temp = new Float32Array(mask);
+    
+    for (let iter = 0; iter < iterations; iter++) {
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                const idx = y * width + x;
+                let sum = 0;
+                let count = 0;
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const px = x + dx;
+                        const py = y + dy;
+                        const pIdx = py * width + px;
+                        sum += mask[pIdx];
+                        count++;
+                    }
+                }
+                temp[idx] = sum / count;
+            }
+        }
+        // Copiar de volta
+        for (let i = 0; i < mask.length; i++) {
+            smoothed[i] = temp[i];
+        }
+        // Atualizar máscara para próxima iteração
+        for (let i = 0; i < mask.length; i++) {
+            mask[i] = smoothed[i];
+        }
+    }
+    return mask;
 }
 
 async function processWithBodyPix() {
@@ -579,10 +676,13 @@ async function processWithBodyPix() {
         const displayWidth = dom.canvas.width || 640;
         const displayHeight = dom.canvas.height || 480;
 
+        // Segmentação com qualidade melhorada
         const segmentation = await state.bodyPixModel.segmentPerson(dom.video, {
             flipHorizontal: state.facingMode === 'user',
-            internalResolution: 'low',
-            segmentationThreshold: 0.65
+            internalResolution: 'high', // Mudado para 'high' para melhor precisão
+            segmentationThreshold: 0.55, // Limiar mais baixo para capturar melhor as bordas
+            maxDetections: state.useMultiPerson ? 5 : 1,
+            scoreThreshold: 0.4
         });
 
         if (!segmentation || !segmentation.data) {
@@ -601,20 +701,44 @@ async function processWithBodyPix() {
         const segHeight = segmentation.height;
         const mask = new Float32Array(displayWidth * displayHeight);
 
+        // Criar máscara com interpolação bilinear para bordas suaves
         for (let y = 0; y < displayHeight; y++) {
             for (let x = 0; x < displayWidth; x++) {
-                const segX = Math.floor((x / displayWidth) * segWidth);
-                const segY = Math.floor((y / displayHeight) * segHeight);
-                const segIdx = segY * segWidth + segX;
-                mask[y * displayWidth + x] = segData[segIdx] > 0.5 ? 1 : 0;
+                const srcX = (x / displayWidth) * segWidth;
+                const srcY = (y / displayHeight) * segHeight;
+                
+                const x0 = Math.floor(srcX);
+                const x1 = Math.min(x0 + 1, segWidth - 1);
+                const y0 = Math.floor(srcY);
+                const y1 = Math.min(y0 + 1, segHeight - 1);
+                
+                const fx = srcX - x0;
+                const fy = srcY - y0;
+                
+                const idx00 = y0 * segWidth + x0;
+                const idx01 = y0 * segWidth + x1;
+                const idx10 = y1 * segWidth + x0;
+                const idx11 = y1 * segWidth + x1;
+                
+                const v00 = segData[idx00];
+                const v01 = segData[idx01];
+                const v10 = segData[idx10];
+                const v11 = segData[idx11];
+                
+                const v0 = v00 * (1 - fx) + v01 * fx;
+                const v1 = v10 * (1 - fx) + v11 * fx;
+                mask[y * displayWidth + x] = v0 * (1 - fy) + v1 * fy;
             }
         }
 
-        const aperture = getAperture();
-        const blurRadius = aperture.blur * 0.7;
+        // Suavizar a máscara para bordas mais naturais
+        smoothMask(mask, displayWidth, displayHeight, 1);
 
-        if (blurRadius > 0.5) {
-            applyProfessionalBlur(imageData, displayWidth, displayHeight, blurRadius, mask, 3);
+        const aperture = getAperture();
+        const blurRadius = aperture.blur * 0.8;
+
+        if (blurRadius > 0.3) {
+            applyProfessionalBlur(imageData, displayWidth, displayHeight, blurRadius, mask, state.featherRadius);
         }
 
         ctx.putImageData(imageData, 0, 0);
@@ -693,11 +817,14 @@ function capturePhoto(portrait = false) {
             }
         }
 
-        const aperture = getAperture();
-        const blurRadius = aperture.blur * 0.6;
+        // Suavizar a máscara para a foto
+        smoothMask(mask, width, height, 2);
 
-        if (blurRadius > 0.5) {
-            applyProfessionalBlur(imageData, width, height, blurRadius, mask, 4);
+        const aperture = getAperture();
+        const blurRadius = aperture.blur * 0.7;
+
+        if (blurRadius > 0.3) {
+            applyProfessionalBlur(imageData, width, height, blurRadius, mask, 6);
         }
 
         ctx.putImageData(imageData, 0, 0);
@@ -943,7 +1070,7 @@ function setupEvents() {
             dom.apertureControl.classList.toggle('active', isIA);
 
             if (isIA && !state.segmentationReady) {
-                showSuggestion('⏳ Carregando IA...');
+                showSuggestion('⏳ Carregando IA de segmentação...');
                 loadBodyPix();
             }
 
