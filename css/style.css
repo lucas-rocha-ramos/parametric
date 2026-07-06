@@ -1,13 +1,32 @@
-/* Reset e base */
+/* ============================================================
+   RESET E BASE - APPLE STYLE
+   ============================================================ */
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
-body {
+
+:root {
+    --safe-top: env(safe-area-inset-top, 20px);
+    --safe-bottom: env(safe-area-inset-bottom, 20px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --gold: #fbbf24;
+    --gold-dark: #d97706;
+    --glass: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --text-muted: rgba(255, 255, 255, 0.3);
+}
+
+html, body {
     background: #000;
     color: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
     overflow: hidden;
     height: 100vh;
     width: 100vw;
@@ -17,14 +36,20 @@ body {
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
+
 #root {
     height: 100%;
     width: 100%;
     background: #000;
 }
 
-/* Camera Container */
+/* ============================================================
+   CAMERA CONTAINER
+   ============================================================ */
+
 .camera-container {
     position: relative;
     width: 100%;
@@ -33,6 +58,7 @@ body {
     display: flex;
     flex-direction: column;
 }
+
 .video-wrapper {
     flex: 1;
     position: relative;
@@ -43,6 +69,7 @@ body {
     justify-content: center;
     touch-action: none;
 }
+
 #video {
     width: 100%;
     height: 100%;
@@ -50,6 +77,7 @@ body {
     display: block;
     touch-action: none;
 }
+
 #canvas-output {
     position: absolute;
     top: 0;
@@ -61,11 +89,15 @@ body {
     display: none;
     image-rendering: auto;
 }
+
 #canvas-output.active {
     display: block;
 }
 
-/* Overlays e Guias */
+/* ============================================================
+   OVERLAYS E GUIAS - APPLE STYLE
+   ============================================================ */
+
 .overlay-grid {
     position: absolute;
     top: 0;
@@ -75,372 +107,489 @@ body {
     pointer-events: none;
     z-index: 5;
 }
+
 .grid-line {
     position: absolute;
-    background: rgba(255, 215, 0, 0.4);
+    background: rgba(255, 215, 0, 0.35);
 }
+
 .guide-label {
     position: absolute;
-    color: rgba(255, 215, 0, 0.85);
-    font-size: 10px;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 2px 8px;
-    border-radius: 10px;
-    bottom: 8px;
+    color: rgba(255, 215, 0, 0.9);
+    font-size: clamp(9px, 1.2vw, 12px);
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 4px 14px;
+    border-radius: 20px;
+    bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
     white-space: nowrap;
     z-index: 6;
-    backdrop-filter: blur(4px);
     pointer-events: none;
     text-align: center;
-    max-width: 90%;
+    max-width: 92%;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-.guide-label .position-indicator {
-    display: block;
-    font-size: 8px;
-    color: rgba(255, 215, 0, 0.5);
-    margin-top: 1px;
+    border: 0.5px solid rgba(255, 215, 0, 0.1);
+    letter-spacing: 0.3px;
 }
 
-/* Focus Indicator */
+.guide-label .position-indicator {
+    display: block;
+    font-size: clamp(7px, 0.9vw, 10px);
+    color: rgba(255, 215, 0, 0.5);
+    margin-top: 1px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+}
+
+/* ============================================================
+   FOCUS INDICATOR - APPLE STYLE
+   ============================================================ */
+
 .focus-indicator {
     position: absolute;
-    width: 50px;
-    height: 50px;
-    border: 2px solid #fbbf24;
+    width: 60px;
+    height: 60px;
+    border: 2px solid var(--gold);
     border-radius: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
     z-index: 10;
     opacity: 0;
-    transition: opacity 0.3s;
-    background: rgba(251, 191, 36, 0.06);
+    transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    background: rgba(251, 191, 36, 0.05);
+    box-shadow: 0 0 40px rgba(251, 191, 36, 0.1);
 }
+
 .focus-indicator.active {
     opacity: 1;
-    animation: focusPulse 0.4s ease-out;
+    animation: focusPulse 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
+
 @keyframes focusPulse {
-    0% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+    0% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.8; }
     100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
 }
 
-/* Aperture Control */
+/* ============================================================
+   APERTURE CONTROL - APPLE STYLE
+   ============================================================ */
+
 .aperture-control {
     position: absolute;
-    bottom: 180px;
-    right: 10px;
-    background: rgba(0,0,0,0.85);
-    backdrop-filter: blur(12px);
-    border-radius: 12px;
-    padding: 8px 10px;
-    border: 1px solid rgba(255,215,0,0.1);
+    bottom: clamp(160px, 22vh, 200px);
+    right: clamp(10px, 2vw, 20px);
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 16px;
+    padding: clamp(8px, 1.2vw, 14px) clamp(10px, 1.5vw, 16px);
+    border: 0.5px solid rgba(255, 255, 255, 0.08);
     z-index: 12;
-    min-width: 70px;
+    min-width: clamp(60px, 10vw, 90px);
     display: none;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
+
 .aperture-control.active {
     display: block;
+    animation: fadeInUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .aperture-control .label {
-    font-size: 7px;
-    color: #888;
+    font-size: clamp(6px, 0.8vw, 9px);
+    color: var(--text-secondary);
     text-align: center;
     letter-spacing: 0.5px;
+    font-weight: 500;
+    text-transform: uppercase;
 }
+
 .aperture-control .value {
-    font-size: 16px;
+    font-size: clamp(16px, 2.2vw, 22px);
     font-weight: 700;
-    color: #fbbf24;
+    color: var(--gold);
     text-align: center;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
 }
+
 .aperture-control .sub {
-    font-size: 7px;
-    color: #666;
+    font-size: clamp(6px, 0.7vw, 8px);
+    color: var(--text-muted);
     text-align: center;
+    letter-spacing: 0.3px;
 }
+
 .aperture-slider {
     width: 100%;
     height: 3px;
     -webkit-appearance: none;
     appearance: none;
-    background: rgba(255,215,0,0.12);
+    background: rgba(255, 215, 0, 0.15);
     border-radius: 2px;
     outline: none;
-    margin-top: 4px;
+    margin-top: 6px;
 }
+
 .aperture-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 14px;
-    height: 14px;
+    width: clamp(14px, 2vw, 18px);
+    height: clamp(14px, 2vw, 18px);
     border-radius: 50%;
-    background: #fbbf24;
+    background: var(--gold);
     cursor: pointer;
-    border: 2px solid rgba(255,255,255,0.1);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
 }
 
-/* Zoom Slider */
+.aperture-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--gold);
+    cursor: pointer;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================================
+   ZOOM SLIDER - APPLE STYLE
+   ============================================================ */
+
 .zoom-slider {
     position: absolute;
-    right: 10px;
+    right: clamp(10px, 2vw, 18px);
     top: 50%;
     transform: translateY(-50%);
     width: 3px;
-    height: 100px;
-    background: rgba(255,255,255,0.08);
+    height: clamp(100px, 20vh, 160px);
+    background: rgba(255, 255, 255, 0.08);
     border-radius: 2px;
     z-index: 15;
     display: none;
     touch-action: none;
 }
+
 .zoom-slider.active {
     display: block;
 }
+
 .zoom-slider .thumb {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    width: 16px;
-    height: 16px;
-    background: #fbbf24;
+    width: clamp(16px, 2.2vw, 22px);
+    height: clamp(16px, 2.2vw, 22px);
+    background: var(--gold);
     border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.15);
-    box-shadow: 0 0 12px rgba(251,191,36,0.15);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 2px 16px rgba(251, 191, 36, 0.25);
+    transition: top 0.05s linear;
 }
 
-/* Bottom Controls */
+/* ============================================================
+   BOTTOM CONTROLS - APPLE STYLE
+   ============================================================ */
+
 .bottom-controls {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    background: linear-gradient(transparent, rgba(0,0,0,0.9) 30%);
-    padding: 8px 0 14px 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85) 20%, rgba(0, 0, 0, 0.95));
+    padding: clamp(8px, 1.5vh, 16px) 0 clamp(12px, 2vh, 24px) 0;
     z-index: 20;
     pointer-events: none;
+    padding-bottom: calc(clamp(12px, 2vh, 24px) + var(--safe-bottom));
 }
+
 .bottom-controls > * {
     pointer-events: auto;
 }
 
+/* ============================================================
+   MODE FILTERS - APPLE STYLE
+   ============================================================ */
+
 .mode-filters {
     display: flex;
     justify-content: center;
-    gap: 6px;
-    margin-bottom: 6px;
-    padding: 0 8px;
+    gap: clamp(4px, 0.8vw, 10px);
+    margin-bottom: clamp(6px, 1vh, 12px);
+    padding: 0 clamp(8px, 2vw, 20px);
     flex-wrap: wrap;
 }
+
 .mode-filter-btn {
-    background: rgba(255,255,255,0.05);
-    border: 2px solid rgba(255,255,255,0.06);
-    color: #999;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 7px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    padding: clamp(4px, 0.6vh, 8px) clamp(8px, 1.2vw, 16px);
+    border-radius: 20px;
+    font-size: clamp(8px, 1.1vw, 12px);
     font-weight: 600;
-    transition: 0.2s;
+    transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     touch-action: manipulation;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     letter-spacing: 0.2px;
+    white-space: nowrap;
 }
+
 .mode-filter-btn.active {
-    background: #fbbf24;
-    border-color: #fbbf24;
+    background: var(--gold);
+    border-color: var(--gold);
     color: #000;
+    box-shadow: 0 4px 20px rgba(251, 191, 36, 0.25);
 }
+
 .mode-filter-btn:active {
-    transform: scale(0.92);
+    transform: scale(0.94);
 }
+
 .mode-filter-btn .badge {
     display: inline-block;
-    background: rgba(255,215,0,0.12);
-    padding: 0 3px;
-    border-radius: 2px;
-    font-size: 5px;
-    margin-left: 2px;
-    color: #fbbf24;
+    background: rgba(255, 215, 0, 0.12);
+    padding: 0 5px;
+    border-radius: 4px;
+    font-size: clamp(5px, 0.6vw, 7px);
+    margin-left: 3px;
+    color: var(--gold);
+    font-weight: 700;
 }
+
 .mode-filter-btn.active .badge {
-    background: rgba(0,0,0,0.1);
+    background: rgba(0, 0, 0, 0.1);
     color: #000;
 }
 
+/* ============================================================
+   COMPOSITION SCROLL - APPLE STYLE
+   ============================================================ */
+
 .composition-scroll {
     display: flex;
-    gap: 3px;
+    gap: clamp(3px, 0.5vw, 8px);
     overflow-x: auto;
-    padding: 0 6px 3px 6px;
+    padding: 0 clamp(6px, 1.5vw, 16px) clamp(4px, 0.6vh, 8px) clamp(6px, 1.5vw, 16px);
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
 }
+
 .composition-scroll::-webkit-scrollbar {
     display: none;
 }
+
 .comp-chip {
     flex: 0 0 auto;
-    background: rgba(255,255,255,0.04);
-    backdrop-filter: blur(6px);
-    padding: 2px 6px;
-    border-radius: 8px;
-    font-size: 6px;
-    border: 1px solid rgba(255,255,255,0.03);
-    color: #aaa;
-    transition: 0.2s;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: clamp(3px, 0.4vh, 6px) clamp(6px, 0.8vw, 12px);
+    border-radius: 14px;
+    font-size: clamp(6px, 0.8vw, 10px);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    color: var(--text-secondary);
+    transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     touch-action: manipulation;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     white-space: nowrap;
     text-transform: uppercase;
     font-weight: 600;
-    letter-spacing: 0.2px;
+    letter-spacing: 0.3px;
 }
+
 .comp-chip.active {
-    background: rgba(255, 215, 0, 0.1);
-    border-color: #fbbf24;
-    color: #fbbf24;
+    background: rgba(255, 215, 0, 0.08);
+    border-color: var(--gold);
+    color: var(--gold);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.05);
 }
+
 .comp-chip:active {
-    transform: scale(0.92);
+    transform: scale(0.94);
 }
+
 .comp-chip .pos-indicator {
     display: block;
-    font-size: 4px;
-    color: rgba(255,215,0,0.25);
+    font-size: clamp(4px, 0.5vw, 7px);
+    color: rgba(255, 215, 0, 0.25);
     text-align: center;
     margin-top: 0px;
     font-weight: 400;
+    letter-spacing: 0.5px;
 }
+
 .comp-chip.active .pos-indicator {
-    color: #fbbf24;
+    color: rgba(255, 215, 0, 0.5);
 }
+
+/* ============================================================
+   ACTION BUTTONS - APPLE STYLE
+   ============================================================ */
 
 .action-buttons {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 12px;
-    padding: 0 12px;
-    margin-top: 3px;
+    gap: clamp(10px, 2vw, 24px);
+    padding: 0 clamp(12px, 3vw, 32px);
+    margin-top: clamp(2px, 0.3vh, 6px);
 }
+
 .action-btn {
-    width: 32px;
-    height: 32px;
+    width: clamp(32px, 5vw, 44px);
+    height: clamp(32px, 5vw, 44px);
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.04);
     backdrop-filter: blur(8px);
-    border: 2px solid rgba(255, 255, 255, 0.06);
-    color: #ccc;
-    font-size: 12px;
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    font-size: clamp(14px, 2vw, 18px);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: 0.2s;
+    transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     touch-action: manipulation;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
+
 .action-btn:active {
     transform: scale(0.88);
-    background: rgba(255,255,255,0.08);
+    background: rgba(255, 255, 255, 0.08);
 }
+
+.action-btn svg {
+    width: clamp(14px, 2vw, 18px);
+    height: clamp(14px, 2vw, 18px);
+}
+
 .shutter-btn {
-    width: 50px;
-    height: 50px;
+    width: clamp(50px, 8vw, 68px);
+    height: clamp(50px, 8vw, 68px);
     border-radius: 50%;
-    background: white;
-    border: 4px solid rgba(255,255,255,0.2);
-    box-shadow: 0 0 15px rgba(255,255,255,0.03);
+    background: #fff;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 24px rgba(255, 255, 255, 0.05);
     touch-action: manipulation;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    transition: 0.15s;
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     position: relative;
 }
+
 .shutter-btn:active {
     transform: scale(0.88);
 }
+
 .shutter-btn.recording {
     background: #ff3b30;
     border-color: #ff3b30;
     animation: pulse 1s infinite;
 }
+
 @keyframes pulse {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.03); }
+    50% { transform: scale(1.04); }
 }
+
 .shutter-btn .record-dot {
-    width: 12px;
-    height: 12px;
+    width: clamp(12px, 1.8vw, 16px);
+    height: clamp(12px, 1.8vw, 16px);
     background: #ff3b30;
     border-radius: 3px;
     margin: 0 auto;
-    transition: 0.3s;
-}
-.shutter-btn.recording .record-dot {
-    border-radius: 50%;
-    width: 16px;
-    height: 16px;
-    background: white;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* Score Panel */
+.shutter-btn.recording .record-dot {
+    border-radius: 50%;
+    width: clamp(16px, 2.2vw, 20px);
+    height: clamp(16px, 2.2vw, 20px);
+    background: #fff;
+}
+
+/* ============================================================
+   SCORE PANEL - APPLE STYLE
+   ============================================================ */
+
 .score-panel {
     position: absolute;
-    top: 10px;
-    right: 6px;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(12px);
-    border-radius: 8px;
-    padding: 3px 6px;
-    min-width: 50px;
-    border: 1px solid rgba(255, 255, 255, 0.03);
+    top: clamp(10px, 2vh, 20px);
+    right: clamp(8px, 1.5vw, 16px);
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 14px;
+    padding: clamp(4px, 0.6vh, 8px) clamp(6px, 0.8vw, 12px);
+    min-width: clamp(45px, 6vw, 70px);
+    border: 0.5px solid rgba(255, 255, 255, 0.04);
     z-index: 20;
     pointer-events: none;
 }
+
 .score-item {
     display: flex;
     justify-content: space-between;
-    font-size: 7px;
-    padding: 0px;
-    color: #bbb;
-}
-.score-value {
-    font-weight: 700;
-    color: #fbbf24;
+    font-size: clamp(7px, 0.8vw, 10px);
+    padding: 1px 0;
+    color: var(--text-secondary);
+    font-weight: 500;
 }
 
-/* AI Suggestion */
+.score-value {
+    font-weight: 700;
+    color: var(--gold);
+    font-size: clamp(8px, 0.9vw, 11px);
+}
+
+/* ============================================================
+   AI SUGGESTION - APPLE STYLE
+   ============================================================ */
+
 .ai-suggestion {
     position: absolute;
-    bottom: 120px;
+    bottom: clamp(100px, 18vh, 140px);
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(8px);
-    padding: 3px 10px;
-    border-radius: 14px;
-    font-size: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: clamp(4px, 0.6vh, 8px) clamp(12px, 2vw, 24px);
+    border-radius: 24px;
+    font-size: clamp(8px, 1vw, 12px);
     font-weight: 500;
-    border: 1px solid rgba(255, 215, 0, 0.08);
-    color: #fbbf24;
+    border: 0.5px solid rgba(255, 215, 0, 0.06);
+    color: var(--gold);
     white-space: nowrap;
     z-index: 15;
-    max-width: 90%;
+    max-width: 92%;
     overflow: hidden;
     text-overflow: ellipsis;
     pointer-events: none;
     letter-spacing: 0.2px;
 }
 
-/* Permission Overlay */
+/* ============================================================
+   PERMISSION OVERLAY - APPLE STYLE
+   ============================================================ */
+
 .permission-overlay {
     position: absolute;
     top: 0;
@@ -448,6 +597,8 @@ body {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.92);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -456,38 +607,50 @@ body {
     padding: 30px;
     text-align: center;
 }
+
 .permission-overlay h2 {
-    font-size: 16px;
-    margin-bottom: 4px;
+    font-size: clamp(18px, 3vw, 24px);
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #fff;
 }
+
 .permission-overlay p {
-    color: #aaa;
-    font-size: 12px;
-    max-width: 240px;
-    margin-bottom: 12px;
+    color: var(--text-secondary);
+    font-size: clamp(13px, 1.8vw, 16px);
+    max-width: 280px;
+    margin-bottom: 20px;
+    line-height: 1.5;
 }
+
 .permission-btn {
-    background: #fbbf24;
+    background: var(--gold);
     border: none;
-    padding: 8px 24px;
-    border-radius: 20px;
-    font-size: 13px;
+    padding: clamp(10px, 1.5vh, 16px) clamp(28px, 4vw, 44px);
+    border-radius: 30px;
+    font-size: clamp(14px, 1.8vw, 18px);
     font-weight: 600;
     color: #000;
     touch-action: manipulation;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    transition: all 0.2s;
 }
+
 .permission-btn:active {
     transform: scale(0.95);
 }
+
 .error-msg {
     color: #ff6b6b;
-    font-size: 10px;
-    margin-top: 4px;
+    font-size: clamp(10px, 1.2vw, 13px);
+    margin-top: 10px;
 }
 
-/* Photo Preview */
+/* ============================================================
+   PHOTO PREVIEW - APPLE STYLE
+   ============================================================ */
+
 .photo-preview {
     position: fixed;
     top: 0;
@@ -495,159 +658,397 @@ body {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
     z-index: 999;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 20px;
-    backdrop-filter: blur(10px);
 }
+
 .photo-preview img,
 .photo-preview video {
     max-width: 100%;
-    max-height: 55%;
-    border-radius: 12px;
+    max-height: 60%;
+    border-radius: 16px;
     object-fit: contain;
-    border: 1px solid rgba(255, 255, 255, 0.03);
+    border: 0.5px solid rgba(255, 255, 255, 0.04);
+    box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
 }
-.photo-actions {
+
+.photo-preview .caption {
+    color: var(--text-secondary);
+    font-size: clamp(10px, 1.2vw, 13px);
     margin-top: 12px;
-    display: flex;
-    gap: 12px;
+    letter-spacing: 0.3px;
 }
+
+.photo-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 14px;
+}
+
 .photo-actions button {
-    padding: 6px 18px;
-    border-radius: 20px;
-    font-size: 12px;
+    padding: clamp(8px, 1.2vh, 12px) clamp(20px, 3vw, 32px);
+    border-radius: 30px;
+    font-size: clamp(13px, 1.5vw, 16px);
     font-weight: 600;
     border: none;
     touch-action: manipulation;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    transition: all 0.2s;
 }
+
 .photo-actions button:active {
     transform: scale(0.95);
 }
+
 .btn-close {
-    background: #fbbf24;
+    background: var(--gold);
     color: #000;
 }
+
 .btn-save {
-    background: #333;
+    background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
 
-/* Timer Badge */
+/* ============================================================
+   TIMER BADGE - APPLE STYLE
+   ============================================================ */
+
 .timer-badge {
     position: absolute;
-    top: 10px;
+    top: clamp(10px, 2vh, 18px);
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(255, 0, 0, 0.8);
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 10px;
+    background: rgba(255, 0, 0, 0.85);
+    padding: clamp(2px, 0.3vh, 4px) clamp(10px, 1.5vw, 16px);
+    border-radius: 20px;
+    font-size: clamp(10px, 1.2vw, 14px);
     font-weight: 700;
     color: #fff;
     z-index: 30;
     display: none;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
 }
+
 .timer-badge.active {
     display: block;
     animation: blink 1s infinite;
 }
+
 @keyframes blink {
-    0%,
-    100% { opacity: 1; }
-    50% { opacity: 0.3; }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
 }
 
-/* Camera Selector */
+/* ============================================================
+   CAMERA SELECTOR - APPLE STYLE
+   ============================================================ */
+
 .camera-selector {
     position: absolute;
-    top: 10px;
-    left: 6px;
+    top: clamp(10px, 2vh, 18px);
+    left: clamp(8px, 1.5vw, 16px);
     z-index: 25;
     display: flex;
-    gap: 2px;
+    gap: 4px;
 }
+
 .cam-btn {
     background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(6px);
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    color: #888;
-    padding: 2px 5px;
-    border-radius: 6px;
-    font-size: 6px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 0.5px solid rgba(255, 255, 255, 0.06);
+    color: var(--text-secondary);
+    padding: clamp(2px, 0.3vh, 4px) clamp(6px, 0.8vw, 10px);
+    border-radius: 10px;
+    font-size: clamp(6px, 0.7vw, 9px);
     font-weight: 600;
     touch-action: manipulation;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    transition: all 0.2s;
 }
+
 .cam-btn.active {
-    border-color: #fbbf24;
-    color: #fbbf24;
+    border-color: var(--gold);
+    color: var(--gold);
 }
+
 .cam-btn:active {
     transform: scale(0.92);
 }
 
-/* Loading Indicator */
+/* ============================================================
+   LOADING INDICATOR - APPLE STYLE
+   ============================================================ */
+
 .loading-indicator {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 8;
-    color: #fbbf24;
-    font-size: 9px;
+    color: var(--gold);
+    font-size: clamp(10px, 1.2vw, 14px);
     text-align: center;
     background: rgba(0, 0, 0, 0.6);
-    padding: 8px 14px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 215, 0, 0.06);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: clamp(10px, 1.5vh, 16px) clamp(16px, 2vw, 24px);
+    border-radius: 14px;
+    border: 0.5px solid rgba(255, 215, 0, 0.06);
     display: none;
 }
+
 .loading-indicator.active {
     display: block;
 }
+
 .loading-indicator .spinner {
     display: inline-block;
-    width: 14px;
-    height: 14px;
+    width: clamp(14px, 1.8vw, 20px);
+    height: clamp(14px, 1.8vw, 20px);
     border: 2px solid rgba(255, 215, 0, 0.1);
-    border-top: 2px solid #fbbf24;
+    border-top: 2px solid var(--gold);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
-    margin-right: 4px;
+    margin-right: 8px;
     vertical-align: middle;
 }
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
 
-/* Responsive */
+/* ============================================================
+   RESPONSIVIDADE - IPHONE 13, 14, 15, 16
+   ============================================================ */
+
+/* iPhone 13/14/15/16 (390px - 430px) */
 @media (max-width: 430px) {
-    .score-panel { padding: 2px 5px; min-width: 40px; top: 8px; right: 4px; }
-    .score-item { font-size: 6px; }
-    .mode-filter-btn { font-size: 6px; padding: 2px 6px; }
-    .mode-filters { gap: 4px; }
-    .comp-chip { font-size: 5px; padding: 1px 5px; }
-    .comp-chip .pos-indicator { font-size: 4px; }
-    .action-btn { width: 28px; height: 28px; font-size: 10px; }
-    .shutter-btn { width: 42px; height: 42px; }
-    .ai-suggestion { font-size: 7px; padding: 2px 8px; bottom: 105px; max-width: 92%; }
-    .guide-label { font-size: 7px; padding: 2px 6px; bottom: 4px; }
-    .guide-label .position-indicator { font-size: 6px; }
-    .bottom-controls { padding: 5px 0 10px 0; }
-    .cam-btn { font-size: 5px; padding: 1px 4px; }
-    .timer-badge { font-size: 8px; padding: 2px 6px; top: 8px; }
-    .focus-indicator { width: 30px; height: 30px; }
-    .zoom-slider { height: 70px; right: 6px; }
-    .aperture-control { bottom: 155px; right: 6px; padding: 5px 6px; min-width: 50px; }
-    .aperture-control .value { font-size: 12px; }
-    .aperture-control .label { font-size: 6px; }
-    .aperture-slider::-webkit-slider-thumb { width: 10px; height: 10px; }
+    .mode-filters {
+        gap: 4px;
+    }
+    
+    .mode-filter-btn {
+        font-size: clamp(7px, 1.6vw, 10px);
+        padding: 3px 8px;
+    }
+    
+    .comp-chip {
+        font-size: clamp(5px, 1.2vw, 8px);
+        padding: 2px 6px;
+    }
+    
+    .score-panel {
+        padding: 3px 6px;
+        min-width: 40px;
+    }
+    
+    .score-item {
+        font-size: clamp(6px, 1.4vw, 8px);
+    }
+    
+    .score-value {
+        font-size: clamp(7px, 1.5vw, 9px);
+    }
+    
+    .guide-label {
+        font-size: clamp(7px, 1.6vw, 10px);
+        padding: 3px 10px;
+    }
+    
+    .guide-label .position-indicator {
+        font-size: clamp(6px, 1.2vw, 8px);
+    }
+    
+    .ai-suggestion {
+        font-size: clamp(7px, 1.4vw, 9px);
+        padding: 3px 10px;
+        bottom: clamp(90px, 16vh, 110px);
+    }
+    
+    .aperture-control {
+        bottom: clamp(140px, 20vh, 170px);
+        right: 8px;
+        padding: 5px 8px;
+        min-width: 55px;
+    }
+    
+    .aperture-control .value {
+        font-size: clamp(13px, 2.8vw, 16px);
+    }
+    
+    .focus-indicator {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .zoom-slider {
+        height: clamp(80px, 15vh, 110px);
+        right: 8px;
+    }
+}
+
+/* iPhone 13/14/15/16 Pro Max (428px - 430px) */
+@media (min-width: 428px) and (max-width: 430px) {
+    .mode-filter-btn {
+        font-size: 9px;
+        padding: 4px 10px;
+    }
+    
+    .comp-chip {
+        font-size: 7px;
+        padding: 3px 8px;
+    }
+}
+
+/* iPhone SE (375px) */
+@media (max-width: 380px) {
+    .mode-filters {
+        gap: 3px;
+    }
+    
+    .mode-filter-btn {
+        font-size: 6px;
+        padding: 2px 6px;
+    }
+    
+    .comp-chip {
+        font-size: 5px;
+        padding: 2px 5px;
+    }
+    
+    .action-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 11px;
+    }
+    
+    .shutter-btn {
+        width: 42px;
+        height: 42px;
+    }
+    
+    .score-panel {
+        min-width: 35px;
+        padding: 2px 4px;
+    }
+    
+    .guide-label {
+        font-size: 6px;
+        padding: 2px 8px;
+    }
+    
+    .ai-suggestion {
+        font-size: 6px;
+        padding: 2px 8px;
+        bottom: 85px;
+    }
+}
+
+/* iPad e telas maiores */
+@media (min-width: 768px) {
+    .mode-filter-btn {
+        font-size: 14px;
+        padding: 8px 20px;
+        border-radius: 25px;
+    }
+    
+    .comp-chip {
+        font-size: 12px;
+        padding: 6px 16px;
+        border-radius: 18px;
+    }
+    
+    .action-btn {
+        width: 52px;
+        height: 52px;
+        font-size: 22px;
+    }
+    
+    .shutter-btn {
+        width: 76px;
+        height: 76px;
+    }
+    
+    .score-panel {
+        padding: 8px 14px;
+        min-width: 80px;
+        border-radius: 18px;
+    }
+    
+    .score-item {
+        font-size: 12px;
+    }
+    
+    .score-value {
+        font-size: 13px;
+    }
+    
+    .guide-label {
+        font-size: 16px;
+        padding: 8px 24px;
+        border-radius: 28px;
+    }
+    
+    .ai-suggestion {
+        font-size: 14px;
+        padding: 8px 28px;
+        bottom: 150px;
+    }
+    
+    .aperture-control {
+        padding: 14px 20px;
+        min-width: 110px;
+        border-radius: 20px;
+    }
+    
+    .aperture-control .value {
+        font-size: 26px;
+    }
+}
+
+/* ============================================================
+   SAFARI SAFE AREAS
+   ============================================================ */
+
+@supports (padding: max(0px)) {
+    .bottom-controls {
+        padding-bottom: max(clamp(12px, 2vh, 24px), var(--safe-bottom));
+    }
+}
+
+/* ============================================================
+   ANIMAÇÕES GERAIS
+   ============================================================ */
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* ============================================================
+   SCROLLBAR PERSONALIZADA (opcional)
+   ============================================================ */
+
+.composition-scroll {
+    scrollbar-width: none;
+}
+
+.composition-scroll::-webkit-scrollbar {
+    display: none;
 }
