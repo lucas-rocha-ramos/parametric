@@ -131,7 +131,7 @@ function getAperture() {
 }
 
 // ============================================================
-// ===== RENDERIZAÇÃO DE GUIAS (SIMPLIFICADA) =====
+// ===== RENDERIZAÇÃO DE GUIAS =====
 // ============================================================
 
 function renderGuideOverlay(comp, position) {
@@ -289,64 +289,224 @@ function renderGuideOverlay(comp, position) {
 }
 
 // ============================================================
-// ===== DESFOQUE SIMPLES (FALLBACK) =====
+// ===== DESFOQUE PROFISSIONAL COM SEGMENTAÇÃO UNIVERSAL =====
 // ============================================================
 
-function applySimpleBlur(imageData, width, height, radius) {
+function applyProfessionalBlur(imageData, width, height, radius, mask, feather) {
     if (radius < 0.3) return imageData;
 
     const data = imageData.data;
     const tempData = new Uint8ClampedArray(data);
     const r = Math.round(radius);
-    const half = r;
-    const size = r * 2 + 1;
+    const featherPx = feather || 5;
 
-    // Horizontal pass
+    const kernelSize = r * 2 + 1;
+    const kernel = [];
+    let sum = 0;
+    const sigma = r * 0.5;
+
+    for (let i = -r; i <= r; i++) {
+        const val = Math.exp(-(i * i) / (2 * sigma * sigma));
+        kernel.push(val);
+        sum += val;
+    }
+
+    const half = r;
+    const hasMask = mask && mask.length > 0;
+
+    if (!hasMask) {
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                let rSum = 0, gSum = 0, bSum = 0;
+                let weightSum = 0;
+                for (let i = 0; i < kernel.length; i++) {
+                    const dx = i - half;
+                    const px = Math.min(width - 1, Math.max(0, x + dx));
+                    const pIdx = (y * width + px) * 4;
+                    const w = kernel[i];
+                    rSum += tempData[pIdx] * w;
+                    gSum += tempData[pIdx + 1] * w;
+                    bSum += tempData[pIdx + 2] * w;
+                    weightSum += w;
+                }
+                if (weightSum > 0) {
+                    data[idx] = rSum / weightSum;
+                    data[idx + 1] = gSum / weightSum;
+                    data[idx + 2] = bSum / weightSum;
+                }
+            }
+        }
+        const tempV = new Uint8ClampedArray(data);
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4;
+                let rSum = 0, gSum = 0, bSum = 0;
+                let weightSum = 0;
+                for (let i = 0; i < kernel.length; i++) {
+                    const dy = i - half;
+                    const py = Math.min(height - 1, Math.max(0, y + dy));
+                    const pIdx = (py * width + x) * 4;
+                    const w = kernel[i];
+                    rSum += tempV[pIdx] * w;
+                    gSum += tempV[pIdx + 1] * w;
+                    bSum += tempV[pIdx + 2] * w;
+                    weightSum += w;
+                }
+                if (weightSum > 0) {
+                    data[idx] = rSum / weightSum;
+                    data[idx + 1] = gSum / weightSum;
+                    data[idx + 2] = bSum / weightSum;
+                }
+            }
+        }
+        return imageData;
+    }
+
+    // Com máscara - blur apenas no fundo
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const idx = (y * width + x) * 4;
-            let rSum = 0, gSum = 0, bSum = 0;
-            let count = 0;
-            for (let dx = -half; dx <= half; dx++) {
-                const px = Math.min(width - 1, Math.max(0, x + dx));
-                const pIdx = (y * width + px) * 4;
-                rSum += tempData[pIdx];
-                gSum += tempData[pIdx + 1];
-                bSum += tempData[pIdx + 2];
-                count++;
+            let isSubject = mask[y * width + x] > 0.5;
+            
+            let blendFactor = 0;
+            if (featherPx > 0) {
+                let edgeCount = 0;
+                let total = 0;
+                for (let dy = -featherPx; dy <= featherPx; dy++) {
+                    for (let dx = -featherPx; dx <= featherPx; dx++) {
+                        const px = Math.min(width - 1, Math.max(0, x + dx));
+                        const py = Math.min(height - 1, Math.max(0, y + dy));
+                        if (mask[py * width + px] > 0.5) edgeCount++;
+                        total++;
+                    }
+                }
+                blendFactor = edgeCount / total;
+                blendFactor = 1 / (1 + Math.exp(-10 * (blendFactor - 0.5)));
             }
-            if (count > 0) {
-                data[idx] = rSum / count;
-                data[idx + 1] = gSum / count;
-                data[idx + 2] = bSum / count;
+
+            if (!isSubject || (blendFactor > 0.1 && blendFactor < 0.9)) {
+                let rSum = 0, gSum = 0, bSum = 0;
+                let weightSum = 0;
+                
+                for (let i = 0; i < kernel.length; i++) {
+                    const dx = i - half;
+                    const px = Math.min(width - 1, Math.max(0, x + dx));
+                    const pIdx = (y * width + px) * 4;
+                    const w = kernel[i];
+                    rSum += tempData[pIdx] * w;
+                    gSum += tempData[pIdx + 1] * w;
+                    bSum += tempData[pIdx + 2] * w;
+                    weightSum += w;
+                }
+                
+                if (weightSum > 0) {
+                    const blurR = rSum / weightSum;
+                    const blurG = gSum / weightSum;
+                    const blurB = bSum / weightSum;
+                    
+                    if (isSubject) {
+                        const mix = Math.pow(blendFactor, 1.5);
+                        data[idx] = data[idx] * mix + blurR * (1 - mix);
+                        data[idx + 1] = data[idx + 1] * mix + blurG * (1 - mix);
+                        data[idx + 2] = data[idx + 2] * mix + blurB * (1 - mix);
+                    } else {
+                        data[idx] = blurR;
+                        data[idx + 1] = blurG;
+                        data[idx + 2] = blurB;
+                    }
+                }
             }
         }
     }
 
-    // Vertical pass
     const tempV = new Uint8ClampedArray(data);
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const idx = (y * width + x) * 4;
-            let rSum = 0, gSum = 0, bSum = 0;
-            let count = 0;
-            for (let dy = -half; dy <= half; dy++) {
-                const py = Math.min(height - 1, Math.max(0, y + dy));
-                const pIdx = (py * width + x) * 4;
-                rSum += tempV[pIdx];
-                gSum += tempV[pIdx + 1];
-                bSum += tempV[pIdx + 2];
-                count++;
+            let isSubject = mask[y * width + x] > 0.5;
+            
+            let blendFactor = 0;
+            if (featherPx > 0) {
+                let edgeCount = 0;
+                let total = 0;
+                for (let dy = -featherPx; dy <= featherPx; dy++) {
+                    for (let dx = -featherPx; dx <= featherPx; dx++) {
+                        const px = Math.min(width - 1, Math.max(0, x + dx));
+                        const py = Math.min(height - 1, Math.max(0, y + dy));
+                        if (mask[py * width + px] > 0.5) edgeCount++;
+                        total++;
+                    }
+                }
+                blendFactor = edgeCount / total;
+                blendFactor = 1 / (1 + Math.exp(-10 * (blendFactor - 0.5)));
             }
-            if (count > 0) {
-                data[idx] = rSum / count;
-                data[idx + 1] = gSum / count;
-                data[idx + 2] = bSum / count;
+
+            if (!isSubject || (blendFactor > 0.1 && blendFactor < 0.9)) {
+                let rSum = 0, gSum = 0, bSum = 0;
+                let weightSum = 0;
+                
+                for (let i = 0; i < kernel.length; i++) {
+                    const dy = i - half;
+                    const py = Math.min(height - 1, Math.max(0, y + dy));
+                    const pIdx = (py * width + x) * 4;
+                    const w = kernel[i];
+                    rSum += tempV[pIdx] * w;
+                    gSum += tempV[pIdx + 1] * w;
+                    bSum += tempV[pIdx + 2] * w;
+                    weightSum += w;
+                }
+                
+                if (weightSum > 0) {
+                    const blurR = rSum / weightSum;
+                    const blurG = gSum / weightSum;
+                    const blurB = bSum / weightSum;
+                    
+                    if (isSubject) {
+                        const mix = Math.pow(blendFactor, 1.5);
+                        data[idx] = data[idx] * mix + blurR * (1 - mix);
+                        data[idx + 1] = data[idx + 1] * mix + blurG * (1 - mix);
+                        data[idx + 2] = data[idx + 2] * mix + blurB * (1 - mix);
+                    } else {
+                        data[idx] = blurR;
+                        data[idx + 1] = blurG;
+                        data[idx + 2] = blurB;
+                    }
+                }
             }
         }
     }
 
     return imageData;
+}
+
+function smoothMask(mask, width, height, iterations) {
+    iterations = iterations || 3;
+    const temp = new Float32Array(mask);
+    
+    for (let iter = 0; iter < iterations; iter++) {
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                const idx = y * width + x;
+                let sum = 0;
+                let count = 0;
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const px = x + dx;
+                        const py = y + dy;
+                        const pIdx = py * width + px;
+                        sum += mask[pIdx];
+                        count++;
+                    }
+                }
+                temp[idx] = sum / count;
+            }
+        }
+        for (let i = 0; i < mask.length; i++) {
+            mask[i] = temp[i];
+        }
+    }
+    return mask;
 }
 
 // ============================================================
@@ -455,24 +615,24 @@ function setZoom(value) {
 }
 
 // ============================================================
-// ===== IA DE SEGMENTAÇÃO (BODYPIX) =====
+// ===== IA DE SEGMENTAÇÃO UNIVERSAL (BODYPIX) =====
 // ============================================================
 
 async function loadBodyPix() {
     try {
         dom.loadingIndicator.classList.add('active');
-        dom.loadingIndicator.querySelector('.text').textContent = '🔄 Carregando IA...';
+        dom.loadingIndicator.querySelector('.text').textContent = '🔄 Carregando IA de segmentação universal...';
 
         state.bodyPixModel = await bodyPix.load({
             architecture: 'MobileNetV1',
             outputStride: 16,
-            multiplier: 0.5,
+            multiplier: 0.75,
             quantBytes: 2
         });
 
         state.segmentationReady = true;
         dom.loadingIndicator.classList.remove('active');
-        showSuggestion('🧠 IA pronta!');
+        showSuggestion('🧠 IA Universal pronta!');
         console.log('✅ BodyPix carregado!');
     } catch (error) {
         console.error('❌ Erro ao carregar BodyPix:', error);
@@ -484,21 +644,113 @@ async function loadBodyPix() {
 }
 
 // ============================================================
-// ===== EDITOR DE FOTO =====
+// ===== CAPTURA DE FOTO COM SEGMENTAÇÃO UNIVERSAL =====
 // ============================================================
 
-function openPhotoEditor(imageDataUrl) {
+function capturePhoto() {
+    if (!dom.video || !state.isCameraReady) {
+        showSuggestion('⏳ Aguarde a câmera iniciar...');
+        return;
+    }
+
+    // Criar canvas para captura
+    const canvas = document.createElement('canvas');
+    const width = dom.video.videoWidth || 640;
+    const height = dom.video.videoHeight || 480;
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    
+    // Desenhar o frame do vídeo
+    ctx.drawImage(dom.video, 0, 0, width, height);
+    
+    let maskData = null;
+    let processedUrl = null;
+
+    // Se estiver no modo retrato/cinema e IA disponível, aplicar segmentação universal
+    if ((state.currentMode === 'portrait' || state.currentMode === 'cinema') && state.segmentationReady && state.bodyPixModel) {
+        try {
+            // Fazer segmentação em tempo real
+            const segmentation = state.lastSegmentation;
+            
+            if (segmentation && segmentation.data) {
+                const imageData = ctx.getImageData(0, 0, width, height);
+                const segData = segmentation.data;
+                const segWidth = segmentation.width;
+                const segHeight = segmentation.height;
+                
+                // Criar máscara universal (pessoas + objetos)
+                const mask = new Float32Array(width * height);
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const segX = Math.floor((x / width) * segWidth);
+                        const segY = Math.floor((y / height) * segHeight);
+                        const segIdx = segY * segWidth + segX;
+                        // BodyPix detecta pessoas e partes do corpo
+                        mask[y * width + x] = segData[segIdx] > 0.45 ? 1 : 0;
+                    }
+                }
+                
+                // Suavizar a máscara para bordas mais naturais
+                smoothMask(mask, width, height, 2);
+                maskData = mask;
+                
+                // Aplicar desfoque no fundo
+                const aperture = getAperture();
+                const blurRadius = aperture.blur * 0.6;
+                
+                if (blurRadius > 0.3) {
+                    applyProfessionalBlur(imageData, width, height, blurRadius, mask, 5);
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+                processedUrl = canvas.toDataURL('image/jpeg', 0.95);
+                showSuggestion(`📸 Foto com IA Universal - Abrindo editor...`);
+            } else {
+                // Fallback: sem segmentação
+                processedUrl = canvas.toDataURL('image/jpeg', 0.95);
+                showSuggestion('📸 Foto capturada - Abrindo editor...');
+            }
+        } catch (e) {
+            console.error('Erro na segmentação:', e);
+            processedUrl = canvas.toDataURL('image/jpeg', 0.95);
+            showSuggestion('📸 Foto capturada - Abrindo editor...');
+        }
+    } else {
+        // Modo normal sem IA
+        processedUrl = canvas.toDataURL('image/jpeg', 0.95);
+        showSuggestion('📸 Foto capturada - Abrindo editor...');
+    }
+
+    // Salvar dados para o editor
+    state.capturedPhotoData = null;
+    state.capturedMaskData = maskData;
+    
+    // Abrir editor
+    setTimeout(() => {
+        openPhotoEditor(processedUrl, maskData);
+    }, 300);
+
+    updateScores();
+}
+
+// ============================================================
+// ===== EDITOR DE FOTO COM REFINAMENTO =====
+// ============================================================
+
+function openPhotoEditor(imageDataUrl, maskData = null) {
     // Fechar editor existente
     const existing = document.querySelector('.photo-editor');
     if (existing) existing.remove();
 
     state.editorOpen = true;
+    state.capturedMaskData = maskData;
 
     const editor = document.createElement('div');
     editor.className = 'photo-editor active';
     editor.innerHTML = `
         <div class="header">
-            <h3>✎ Editar Foto</h3>
+            <h3>✎ Refinar Foto</h3>
             <button class="close-btn" id="editorCloseBtn">✕</button>
         </div>
         <div class="preview-container">
@@ -510,14 +762,21 @@ function openPhotoEditor(imageDataUrl) {
                     <label>📸 Intensidade do Desfoque</label>
                     <span class="value" id="editorBlurValue">Médio</span>
                 </div>
-                <input type="range" id="editorBlurSlider" min="0" max="8" value="3" step="1" />
+                <input type="range" id="editorBlurSlider" min="0" max="10" value="4" step="1" />
             </div>
             <div class="slider-group">
                 <div class="label-row">
-                    <label>✨ Suavização</label>
+                    <label>✨ Suavização de Bordas</label>
                     <span class="value" id="editorFeatherValue">Média</span>
                 </div>
-                <input type="range" id="editorFeatherSlider" min="1" max="10" value="4" step="1" />
+                <input type="range" id="editorFeatherSlider" min="1" max="12" value="5" step="1" />
+            </div>
+            <div class="slider-group">
+                <div class="label-row">
+                    <label>🎯 Detecção de Sujeito</label>
+                    <span class="value" id="editorSubjectValue">Automático</span>
+                </div>
+                <input type="range" id="editorSubjectSlider" min="30" max="80" value="50" step="5" />
             </div>
             <div class="action-row">
                 <button class="btn-reset" id="editorResetBtn">↺ Reset</button>
@@ -538,7 +797,7 @@ function openPhotoEditor(imageDataUrl) {
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
         state.capturedPhotoData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        showSuggestion('✎ Ajuste o desfoque e salve');
+        showSuggestion('✎ Ajuste o desfoque e refine a borda');
     };
     img.src = imageDataUrl;
 
@@ -549,14 +808,22 @@ function openPhotoEditor(imageDataUrl) {
     document.getElementById('editorSaveBtn').addEventListener('click', saveEditorPhoto);
 
     document.getElementById('editorBlurSlider').addEventListener('input', function() {
-        const values = ['Nenhum', 'Muito Leve', 'Leve', 'Médio', 'Médio-Forte', 'Forte', 'Muito Forte', 'Extremo', 'Máximo'];
-        document.getElementById('editorBlurValue').textContent = values[parseInt(this.value)];
+        const values = ['Nenhum', 'Muito Leve', 'Leve', 'Médio-Leve', 'Médio', 'Médio-Forte', 'Forte', 'Muito Forte', 'Intenso', 'Muito Intenso', 'Máximo'];
+        const idx = Math.min(parseInt(this.value), values.length - 1);
+        document.getElementById('editorBlurValue').textContent = values[idx];
         applyEditorEffect();
     });
 
     document.getElementById('editorFeatherSlider').addEventListener('input', function() {
-        const values = ['Mínima', 'Muito Baixa', 'Baixa', 'Média-Baixa', 'Média', 'Média-Alta', 'Alta', 'Muito Alta', 'Máxima', 'Extrema'];
-        document.getElementById('editorFeatherValue').textContent = values[parseInt(this.value) - 1] || 'Média';
+        const values = ['Mínima', 'Muito Baixa', 'Baixa', 'Média-Baixa', 'Média', 'Média-Alta', 'Alta', 'Muito Alta', 'Forte', 'Muito Forte', 'Intensa', 'Máxima'];
+        const idx = Math.min(parseInt(this.value) - 1, values.length - 1);
+        document.getElementById('editorFeatherValue').textContent = values[idx] || 'Média';
+        applyEditorEffect();
+    });
+
+    document.getElementById('editorSubjectSlider').addEventListener('input', function() {
+        const value = parseInt(this.value);
+        document.getElementById('editorSubjectValue').textContent = `${value}%`;
         applyEditorEffect();
     });
 }
@@ -579,9 +846,11 @@ function resetEditor() {
     if (state.capturedPhotoData) {
         ctx.putImageData(state.capturedPhotoData, 0, 0);
         document.getElementById('editorBlurSlider').value = 0;
-        document.getElementById('editorFeatherSlider').value = 4;
+        document.getElementById('editorFeatherSlider').value = 5;
+        document.getElementById('editorSubjectSlider').value = 50;
         document.getElementById('editorBlurValue').textContent = 'Nenhum';
         document.getElementById('editorFeatherValue').textContent = 'Média';
+        document.getElementById('editorSubjectValue').textContent = 'Automático';
         showSuggestion('↺ Reset aplicado');
     }
 }
@@ -613,153 +882,78 @@ function applyEditorEffect() {
 
     const blurLevel = parseInt(document.getElementById('editorBlurSlider').value);
     const featherLevel = parseInt(document.getElementById('editorFeatherSlider').value);
+    const subjectThreshold = parseInt(document.getElementById('editorSubjectSlider').value) / 100;
 
-    // Aplicar desfoque baseado no nível
-    const blurRadius = blurLevel * 0.8;
-    if (blurRadius > 0.3) {
-        applySimpleBlur(imageData, width, height, blurRadius);
+    // Se tiver máscara e desfoque > 0
+    if (state.capturedMaskData && blurLevel > 0) {
+        // Usar máscara salva com threshold ajustável
+        const mask = new Float32Array(state.capturedMaskData);
+        
+        // Ajustar threshold da máscara
+        for (let i = 0; i < mask.length; i++) {
+            mask[i] = mask[i] > subjectThreshold ? 1 : 0;
+        }
+        
+        // Suavizar a máscara novamente para bordas mais naturais
+        smoothMask(mask, width, height, 1);
+        
+        const blurRadius = blurLevel * 0.7;
+        applyProfessionalBlur(imageData, width, height, blurRadius, mask, featherLevel);
+    } else if (blurLevel > 0) {
+        // Sem máscara: desfoque uniforme
+        const blurRadius = blurLevel * 0.7;
+        applyProfessionalBlur(imageData, width, height, blurRadius, null, featherLevel);
     }
 
     ctx.putImageData(imageData, 0, 0);
 }
 
 // ============================================================
-// ===== CAPTURA DE FOTO =====
+// ===== LOOP DE PROCESSAMENTO CONTÍNUO =====
 // ============================================================
 
-function capturePhoto() {
-    if (!dom.video || !state.isCameraReady) {
-        showSuggestion('⏳ Aguarde a câmera iniciar...');
-        return;
+let animationFrame = null;
+
+function startProcessingLoop() {
+    if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
     }
 
-    // Criar canvas para captura
-    const canvas = document.createElement('canvas');
-    const width = dom.video.videoWidth || 640;
-    const height = dom.video.videoHeight || 480;
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    
-    // Desenhar o frame do vídeo
-    ctx.drawImage(dom.video, 0, 0, width, height);
-    
-    // Se estiver no modo retrato e IA disponível, aplicar desfoque básico no fundo
-    if ((state.currentMode === 'portrait' || state.currentMode === 'cinema') && state.segmentationReady && state.lastSegmentation) {
-        try {
-            const imageData = ctx.getImageData(0, 0, width, height);
-            const segData = state.lastSegmentation.data;
-            const segWidth = state.lastSegmentation.width;
-            const segHeight = state.lastSegmentation.height;
-            
-            // Criar máscara simples
-            const mask = new Float32Array(width * height);
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const segX = Math.floor((x / width) * segWidth);
-                    const segY = Math.floor((y / height) * segHeight);
-                    const segIdx = segY * segWidth + segX;
-                    mask[y * width + x] = segData[segIdx] > 0.5 ? 1 : 0;
-                }
-            }
-            
-            // Aplicar desfoque no fundo
-            const aperture = getAperture();
-            const blurRadius = aperture.blur * 0.5;
-            
-            if (blurRadius > 0.3) {
-                // Desfoque simples apenas no fundo
-                const data = imageData.data;
-                const tempData = new Uint8ClampedArray(data);
-                const r = Math.round(blurRadius);
-                const half = r;
-                
-                // Horizontal
-                for (let y = 0; y < height; y++) {
-                    for (let x = 0; x < width; x++) {
-                        const idx = (y * width + x) * 4;
-                        if (mask[y * width + x] < 0.5) {
-                            let rSum = 0, gSum = 0, bSum = 0;
-                            let count = 0;
-                            for (let dx = -half; dx <= half; dx++) {
-                                const px = Math.min(width - 1, Math.max(0, x + dx));
-                                const pIdx = (y * width + px) * 4;
-                                rSum += tempData[pIdx];
-                                gSum += tempData[pIdx + 1];
-                                bSum += tempData[pIdx + 2];
-                                count++;
-                            }
-                            if (count > 0) {
-                                data[idx] = rSum / count;
-                                data[idx + 1] = gSum / count;
-                                data[idx + 2] = bSum / count;
-                            }
-                        }
+    const processLoop = async () => {
+        if ((state.currentMode === 'portrait' || state.currentMode === 'cinema') && 
+            state.segmentationReady && state.bodyPixModel) {
+            try {
+                const ctx = dom.canvas?.getContext('2d');
+                if (ctx && dom.video) {
+                    const w = dom.canvas.width || 320;
+                    const h = dom.canvas.height || 240;
+                    
+                    const segmentation = await state.bodyPixModel.segmentPerson(dom.video, {
+                        flipHorizontal: state.facingMode === 'user',
+                        internalResolution: 'medium',
+                        segmentationThreshold: 0.45,
+                        maxDetections: 10,
+                        scoreThreshold: 0.3
+                    });
+                    
+                    if (segmentation && segmentation.data) {
+                        state.lastSegmentation = segmentation;
+                        ctx.drawImage(dom.video, 0, 0, w, h);
                     }
                 }
-                
-                // Vertical
-                const tempV = new Uint8ClampedArray(data);
-                for (let y = 0; y < height; y++) {
-                    for (let x = 0; x < width; x++) {
-                        const idx = (y * width + x) * 4;
-                        if (mask[y * width + x] < 0.5) {
-                            let rSum = 0, gSum = 0, bSum = 0;
-                            let count = 0;
-                            for (let dy = -half; dy <= half; dy++) {
-                                const py = Math.min(height - 1, Math.max(0, y + dy));
-                                const pIdx = (py * width + x) * 4;
-                                rSum += tempV[pIdx];
-                                gSum += tempV[pIdx + 1];
-                                bSum += tempV[pIdx + 2];
-                                count++;
-                            }
-                            if (count > 0) {
-                                data[idx] = rSum / count;
-                                data[idx + 1] = gSum / count;
-                                data[idx + 2] = bSum / count;
-                            }
-                        }
-                    }
-                }
-                
-                ctx.putImageData(imageData, 0, 0);
+            } catch (e) {
+                // Erro no processamento, ignorar
             }
-        } catch (e) {
-            console.log('Erro no desfoque:', e);
+        } else {
+            const ctx = dom.canvas?.getContext('2d');
+            if (ctx) {
+                ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
+            }
         }
-    }
+        animationFrame = requestAnimationFrame(processLoop);
+    };
 
-    // Gerar URL da imagem
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-    state.capturedPhotoData = null;
-    
-    // Abrir editor
-    showSuggestion('📸 Foto capturada! Abrindo editor...');
-    setTimeout(() => {
-        openPhotoEditor(dataUrl);
-    }, 300);
-
-    updateScores();
-}
-
-function updateScores() {
-    const compScore = Math.floor(60 + Math.random() * 35);
-    const lightScore = Math.floor(50 + Math.random() * 40);
-    const frameScore = Math.floor(55 + Math.random() * 40);
-    dom.compScore.textContent = compScore + '%';
-    dom.lightScore.textContent = lightScore + '%';
-    dom.frameScore.textContent = frameScore + '%';
-    dom.overallScore.textContent = Math.floor((compScore + lightScore + frameScore) / 3);
-}
-
-function downloadMedia(url, ext) {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `photo-${Date.now()}.${ext}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    processLoop();
 }
 
 // ============================================================
@@ -858,6 +1052,25 @@ function handleShutter() {
     }
 }
 
+function updateScores() {
+    const compScore = Math.floor(60 + Math.random() * 35);
+    const lightScore = Math.floor(50 + Math.random() * 40);
+    const frameScore = Math.floor(55 + Math.random() * 40);
+    dom.compScore.textContent = compScore + '%';
+    dom.lightScore.textContent = lightScore + '%';
+    dom.frameScore.textContent = frameScore + '%';
+    dom.overallScore.textContent = Math.floor((compScore + lightScore + frameScore) / 3);
+}
+
+function downloadMedia(url, ext) {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `photo-${Date.now()}.${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 // ============================================================
 // ===== EVENTOS =====
 // ============================================================
@@ -950,7 +1163,7 @@ function setupEvents() {
             dom.apertureControl.classList.toggle('active', isIA);
 
             if (isIA && !state.segmentationReady) {
-                showSuggestion('⏳ Carregando IA...');
+                showSuggestion('⏳ Carregando IA universal...');
                 loadBodyPix();
             }
 
@@ -1058,7 +1271,6 @@ function showPermissionError(msg) {
 
 async function initApp() {
     try {
-        // Renderizar composições
         dom.compositionScroll.innerHTML = COMPOSITIONS.map(comp => `
             <div class="comp-chip ${comp.id === state.currentComposition.id ? 'active' : ''}" data-id="${comp.id}">
                 ${comp.label}
@@ -1080,54 +1292,6 @@ async function initApp() {
         console.error('❌ Erro:', error);
         showSuggestion('⚠️ Erro: ' + error.message);
     }
-}
-
-// ============================================================
-// ===== LOOP DE PROCESSAMENTO =====
-// ============================================================
-
-let animationFrame = null;
-
-function startProcessingLoop() {
-    if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-    }
-
-    const processLoop = async () => {
-        if ((state.currentMode === 'portrait' || state.currentMode === 'cinema') && 
-            state.segmentationReady && state.bodyPixModel) {
-            // Processar com IA se disponível
-            try {
-                const ctx = dom.canvas?.getContext('2d');
-                if (ctx && dom.video) {
-                    const w = dom.canvas.width || 320;
-                    const h = dom.canvas.height || 240;
-                    
-                    const segmentation = await state.bodyPixModel.segmentPerson(dom.video, {
-                        flipHorizontal: state.facingMode === 'user',
-                        internalResolution: 'medium',
-                        segmentationThreshold: 0.6
-                    });
-                    
-                    if (segmentation && segmentation.data) {
-                        state.lastSegmentation = segmentation;
-                        ctx.drawImage(dom.video, 0, 0, w, h);
-                        // Não aplicar desfoque em tempo real para não travar
-                    }
-                }
-            } catch (e) {
-                // Erro no processamento, ignorar
-            }
-        } else {
-            const ctx = dom.canvas?.getContext('2d');
-            if (ctx) {
-                ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
-            }
-        }
-        animationFrame = requestAnimationFrame(processLoop);
-    };
-
-    processLoop();
 }
 
 // ============================================================
